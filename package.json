@@ -1,0 +1,19 @@
+{
+  "name": "logic",
+  "version": "1.0.0",
+  "description": "Minikanren for JavaScript",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rkoeninger/logic.js.git"
+  },
+  "author": "Robert Koeninger",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/rkoeninger/logic.js/issues"
+  },
+  "homepage": "https://github.com/rkoeninger/logic.js#readme"
+}
