@@ -231,9 +231,14 @@ const trimParens = s => {
   const rightParen = s.length > 0 && s[s.length - 1] === ')';
   return s.substring(leftParen ? 1 : 0, s.length - (rightParen ? 1 : 0));
 };
+const upToArrow = s => {
+  const arrowIndex = s.indexOf('=>');
+  return (arrowIndex < 0 ? s : s.substring(0, arrowIndex)).trim();
+};
 const STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
 const FN_ARGS = /^(function)?\s*[^\(]*\(\s*([^\)]*)\)/m;
 const FN_ARG_SPLIT = /,/;
 const argsOf = fn => 
   trimParens(fn.toString().replace(STRIP_COMMENTS, '').match(FN_ARGS)[0])
-    .split(FN_ARG_SPLIT).map(x => x.trim());
+    .split(FN_ARG_SPLIT)
+    .map(upToArrow);
