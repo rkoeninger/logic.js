@@ -4,6 +4,9 @@ const LVar = class {
   constructor(id) {
     this.id = id;
   }
+  toString() {
+    return '#' + this.id;
+  }
 };
 
 const Cons = class {
@@ -14,7 +17,7 @@ const Cons = class {
 };
 
 const State = class {
-  constructor(map = {}, nextId = 0) {
+  constructor(map = new Map(), nextId = 0) {
     this.map = map;
     this.nextId = nextId;
   }
@@ -37,14 +40,14 @@ const Reified = class {
   constructor(n) {
     this.n = n;
   }
-  [Symbol.toStringTag]() {
-    return '_.' + n;
+  toString() {
+    return '%' + this.n;
   }
 };
 
 const raise = x => { throw new Error(x); };
 const withMap = (state, map) => new State(map, state.nextId);
-const withNextId = (state, nextId) => new State(state.map, nextId);
+const incNextId = state => new State(state.map, state.nextId + 1);
 const isLazy = x => x instanceof Lazy;
 const isNode = x => x instanceof Node;
 const isLVar = x => x instanceof LVar;
@@ -76,21 +79,22 @@ const eq = (x, y) =>
   x === y ||
   isLVar(x) && isLVar(y) && x.id === y.id ||
   isCons(x) && isCons(y) && eq(x.head, y.head) && eq(x.tail, y.tail);
-const add = (map, key, value) => map && { ...map, [key]: value };
-const walk = (x, map) => isLVar(x) && map.hasOwnProperty(x) ? walk(map[x]) : x;
+const add = (map, key, value) => {
+  if (map) {
+    const newMap = new Map(map);
+    newMap.set(key, value);
+    return newMap;
+  }
+  return map;
+};
+const walk = (x, map) => isLVar(x) && map && map.has(x) ? walk(map.get(x), map) : x;
 const unifyWalked = (x, y, map) =>
   eq(x, y) ? map :
   isLVar(x) ? add(map, x, y) :
   isLVar(y) ? add(map, y, x) :
   unifyTerms(x, y, map);
 const unify = (x, y, map) => unifyWalked(walk(x, map), walk(y, map), map);
-const unifyTerms = (x, y, map) =>
-  isCons(x) ? (
-    !isList(x.tail) ? unify(x.tail, y, map) :
-    isCons(y) && !isList(y.tail) ? unify(x, y.tail, map) :
-    isCons(y) ? unify(x.tail, y.tail, unify(x.head, y.head, map)) :
-    null
-  ) : null;
+const unifyTerms = (x, y, map) => isCons(x) && isCons(y) ? unify(x.tail, y.tail, unify(x.head, y.head, map)) : null;
 const mergeStreams = (x, y) =>
   isLazy(x) ? mergeStreams(x.f(), y) :
   x === null ? y :
@@ -123,7 +127,6 @@ const seqToArray = (n, s) => {
       result.push(s.head);
       s = s.next;
     } else {
-      result.push(s);
       return result;
     }
   }
@@ -140,7 +143,7 @@ const equiv = (u, v) => state => {
 const disj = (g1, g2) => state => mergeStreams(g1(state), g2(state));
 const conj = (g1, g2) => state => flatMapStream(g1(state), g2);
 const reifyState = (v, map) =>
-  isLVar(v) ? add(map, v, new Reified(Object.keys(map).length)) :
+  isLVar(v) ? add(map, v, new Reified(map.size)) :
   isLazy(v) ? reify(v.f(), map) :
   isNode(v) ? reify(realize(v.next), reify(realize(v.head), map)) :
   isCons(v) ? reify(v.tail, reify(v.head, map)) :
@@ -156,7 +159,7 @@ const deepWalkValue = (v, map) =>
 const deepWalk = (v, map) => deepWalkValue(walk(v, map), map);
 const reifyStateFirstVar = state => {
   const v = deepWalk(new LVar(0), state.map);
-  return deepWalk(v, reify(v, {}));
+  return deepWalk(v, reify(v, new Map()));
 };
 const callEmptyState = goal => goal(new State());
 const delayGoal = goal => state => () => goal(state);
@@ -175,7 +178,7 @@ const conjs = (...goals) => {
   return result;
 };
 const conde = (...clauses) => disjs(...clauses.map(c => conjs(...c)));
-const callFresh = f => state => f(new LVar(state.nextId))(withNextId(state, state.nextId + 1));
+const callFresh = f => state => f(new LVar(state.nextId))(incNextId(state));
 
 // callFresh(x => callFresh(y => callFresh(z => conjs(...clauses))))
 
