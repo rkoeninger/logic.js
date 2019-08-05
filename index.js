@@ -157,10 +157,6 @@ const deepWalkValue = (v, map) =>
   isFunction(v) ? deepWalk(trampoline(v), map) :
   v;
 const deepWalk = (v, map) => deepWalkValue(walk(v, map), map);
-const reifyStateFirstVar = state => {
-  const v = deepWalk(new LVar(0), state.map);
-  return deepWalk(v, reify(v, new Map()));
-};
 const callEmptyState = goal => goal(new State());
 const delayGoal = goal => state => () => goal(state);
 const disjs = (...goals) => {
@@ -180,18 +176,10 @@ const conjs = (...goals) => {
 const conde = (...clauses) => disjs(...clauses.map(c => conjs(...c)));
 const callFresh = f => state => f(new LVar(state.nextId))(incNextId(state));
 
+// fresh(['x', 'y', 'z'], ...clauses)
 // callFresh(x => callFresh(y => callFresh(z => conjs(...clauses))))
 
-// (defmacro fresh
-//   [var-vec & clauses]
-//   (if (empty? var-vec)
-//     `(lconj+ ~@clauses)
-//     `(call-fresh (fn [~(first var-vec)]
-//                    (fresh [~@(rest var-vec)]
-//                      ~@clauses)))))
-
-const conso = (first, rest, out) =>
-  isLVar(rest) ? equiv(new Cons(first, rest), out) : equiv(new Cons(first, rest), out);
+const conso = (first, rest, out) => equiv(new Cons(first, rest), out);
 const firsto = (first, out) => callFresh(rest => conso(first, rest, out));
 const resto = (rest, out) => callFresh(first => conso(first, rest, out));
 const emptyo = s => equiv(null, s);
@@ -203,10 +191,4 @@ const appendo = (seq1, seq2, out) =>
         conso(first, rest, seq1),
         conso(first, rec, out),
         appendo(rest, seq2, rec)))))]);
-const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g))).map(reifyStateFirstVar);
-
-// (defmacro run* [fresh-var-vec & goals]
-//   `(->> (fresh [~@fresh-var-vec] ~@goals)
-//      call-empty-state
-//      stream-to-seq
-//      (map reify-state-first-var)))
+const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g)));
