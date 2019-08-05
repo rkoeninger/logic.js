@@ -209,6 +209,21 @@ const appendo = (xs, ys, out) =>
         conso(first, rest, xs),
         conso(first, rec, out),
         appendo(rest, ys, rec)))]);
+const membero = (x, xs) =>
+  conde(
+    [firsto(x, xs)],
+    [fresh(ys =>
+      conj(
+        resto(ys, xs),
+        membero(x, ys)))]);
+const reverseo = (xs, ys) =>
+  conde(
+    [emptyo(xs), emptyo(ys)],
+    [fresh((xf, xr, yl) =>
+      conjs(
+        conso(xf, xr, xs),
+        reverseo(xr, yl),
+        appendo(yl, list(xf), ys)))]);
 const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g))).map(x => x.map);
 const runAll = g => run(32, g);
 const play = f => {
