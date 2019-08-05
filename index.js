@@ -1,11 +1,12 @@
 // https://github.com/mullr/micrologic
 
 const LVar = class {
-  constructor(id) {
+  constructor(id, name) {
     this.id = id;
+    this.name = name;
   }
   toString() {
-    return '#' + this.id;
+    return (this.name || '') + '#' + this.id;
   }
 };
 
@@ -47,7 +48,7 @@ const Reified = class {
 
 const raise = x => { throw new Error(x); };
 const withMap = (state, map) => new State(map, state.nextId);
-const incNextId = state => new State(state.map, state.nextId + 1);
+const incNextId = (state, n = 1) => new State(state.map, state.nextId + n);
 const isLazy = x => x instanceof Lazy;
 const isNode = x => x instanceof Node;
 const isLVar = x => x instanceof LVar;
@@ -75,6 +76,13 @@ const toList = x => {
   }
   return result;
 };
+const range = max => {
+  const result = [];
+  for (let i = 0; i < max; ++i) {
+    result.push(i);
+  }
+  return result;
+};
 const eq = (x, y) =>
   x === y ||
   isLVar(x) && isLVar(y) && x.id === y.id ||
@@ -98,7 +106,7 @@ const unifyTerms = (x, y, map) => isCons(x) && isCons(y) ? unify(x.tail, y.tail,
 const mergeStreams = (x, y) =>
   isLazy(x) ? mergeStreams(x.f(), y) :
   x === null ? y :
-  isNode(x) ? new Node(s.head, mergeStreams(s.next, y)) :
+  isNode(x) ? new Node(x.head, mergeStreams(x.next, y)) :
   isFunction(x) ? (() => mergeStreams(y, x())) :
   raise('unrecognized element type in stream: ' + x);
 const flatMapStream = (s, g) =>
@@ -160,21 +168,26 @@ const deepWalk = (v, map) => deepWalkValue(walk(v, map), map);
 const callEmptyState = goal => goal(new State());
 const delayGoal = goal => state => () => goal(state);
 const disjs = (...goals) => {
-  const result = delayGoal(goals[goals.length - 1]);
+  let result = delayGoal(goals[goals.length - 1]);
   for (let i = goals.length - 2; i >= 0; --i) {
     result = disj(delayGoal(goals[i]), result);
   }
   return result;
 };
 const conjs = (...goals) => {
-  const result = delayGoal(goals[goals.length - 1]);
+  let result = delayGoal(goals[goals.length - 1]);
   for (let i = goals.length - 2; i >= 0; --i) {
     result = conj(delayGoal(goals[i]), result);
   }
   return result;
 };
 const conde = (...clauses) => disjs(...clauses.map(c => conjs(...c)));
-const callFresh = f => state => f(new LVar(state.nextId))(incNextId(state));
+const callFresh = f => state => {
+  const args = argsOf(f);
+  const arity = args.length;
+  const vars = range(arity).map(n => new LVar(state.nextId + n, args[n]));
+  return f(...vars)(incNextId(state, arity));
+};
 
 // fresh(['x', 'y', 'z'], ...clauses)
 // callFresh(x => callFresh(y => callFresh(z => conjs(...clauses))))
@@ -191,4 +204,22 @@ const appendo = (seq1, seq2, out) =>
         conso(first, rest, seq1),
         conso(first, rec, out),
         appendo(rest, seq2, rec)))))]);
-const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g)));
+const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g))).map(x => x.map);
+const runAll = g => run(32, g);
+const present = maps => maps.map(m => [...m].map(([k, v]) => k + ' = ' + v).join('\n')).join('\n\n...\n\n');
+const play = f => console.log(present(runAll(callFresh(f))));
+
+// Taken from Angular.js codebase
+// http://docs.angularjs.org/tutorial/step_05
+
+const trimParens = s => {
+  const leftParen = s.length > 0 && s[0] === '(';
+  const rightParen = s.length > 0 && s[s.length - 1] === ')';
+  return s.substring(leftParen ? 1 : 0, s.length - (rightParen ? 1 : 0));
+};
+const STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+const FN_ARGS = /^(function)?\s*[^\(]*\(\s*([^\)]*)\)/m;
+const FN_ARG_SPLIT = /,/;
+const argsOf = fn => 
+  trimParens(fn.toString().replace(STRIP_COMMENTS, '').match(FN_ARGS)[0])
+    .split(FN_ARG_SPLIT).map(x => x.trim());
