@@ -216,7 +216,16 @@ const appendo = (seq1, seq2, out) =>
 const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g))).map(x => x.map);
 const runAll = g => run(32, g);
 const present = maps => maps.map(m => [...m].map(([k, v]) => k + ' = ' + v).join('\n')).join('\n\n...\n\n');
-const play = f => console.log(present(runAll(callFresh(f))));
+const play = f => {
+  const maps = runAll(callFresh(f));
+  if (maps && maps.length > 0) {
+    if (maps.length > 1 || maps[0].size > 0) {
+      console.log(present(maps));
+    }
+    return true;
+  }
+  return false;
+};
 
 // Taken from Angular.js codebase
 // http://docs.angularjs.org/tutorial/step_05
