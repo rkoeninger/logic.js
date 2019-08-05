@@ -15,6 +15,15 @@ const Cons = class {
     this.head = head;
     this.tail = tail;
   }
+  toString() {
+    let result = 'list(' + this.head;
+    let more = this.tail;
+    while (more) {
+      result += ', ' + more.head;
+      more = more.tail;
+    }
+    return result + ')';
+  }
 };
 
 const State = class {
