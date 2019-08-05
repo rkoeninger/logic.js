@@ -6,7 +6,7 @@ const LVar = class {
     this.name = name;
   }
   toString() {
-    return (this.name || '') + '#' + this.id;
+    return this.name || '#' + this.id;
   }
 };
 
@@ -192,7 +192,7 @@ const conjs = (...goals) => {
 };
 const conde = (...clauses) => disjs(...clauses.map(c => conjs(...c)));
 const fresh = f => state => {
-  const args = argsOf(f);
+  const args = paramsOf(f);
   const arity = args.length;
   const vars = range(arity).map(n => new LVar(state.nextId + n, args[n]));
   return f(...vars)(incNextId(state, arity));
@@ -211,12 +211,20 @@ const appendo = (xs, ys, out) =>
         appendo(rest, ys, rec)))]);
 const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g))).map(x => x.map);
 const runAll = g => run(32, g);
-const present = maps => maps.map(m => [...m].map(([k, v]) => k + ' = ' + v).join('\n')).join('\n\n...\n\n');
 const play = f => {
   const maps = runAll(fresh(f));
   if (maps && maps.length > 0) {
-    if (maps.length > 1 || maps[0].size > 0) {
-      console.log(present(maps));
+    const params = paramsOf(f);
+    const kvss = maps
+      .map(m => [...m]
+        .filter(([k, _]) => params.includes(k.name)))
+      .filter(kvs => kvs.length > 0);
+    if (kvss.length > 0) {
+      console.log(kvss
+        .map(kvs => kvs
+          .map(([k, v]) => k + ' = ' + v)
+          .join('\n'))
+        .join('\n\n...\n\n'));
     }
     return true;
   }
@@ -238,7 +246,7 @@ const upToArrow = s => {
 const STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
 const FN_ARGS = /^(function)?\s*[^\(]*\(\s*([^\)]*)\)/m;
 const FN_ARG_SPLIT = /,/;
-const argsOf = fn => 
+const paramsOf = fn => 
   trimParens(fn.toString().replace(STRIP_COMMENTS, '').match(FN_ARGS)[0])
     .split(FN_ARG_SPLIT)
     .map(upToArrow);
