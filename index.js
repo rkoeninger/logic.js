@@ -191,33 +191,29 @@ const conjs = (...goals) => {
   return result;
 };
 const conde = (...clauses) => disjs(...clauses.map(c => conjs(...c)));
-const callFresh = f => state => {
+const fresh = f => state => {
   const args = argsOf(f);
   const arity = args.length;
   const vars = range(arity).map(n => new LVar(state.nextId + n, args[n]));
   return f(...vars)(incNextId(state, arity));
 };
-
-// fresh(['x', 'y', 'z'], ...clauses)
-// callFresh(x => callFresh(y => callFresh(z => conjs(...clauses))))
-
 const conso = (first, rest, out) => equiv(new Cons(first, rest), out);
-const firsto = (first, out) => callFresh(rest => conso(first, rest, out));
-const resto = (rest, out) => callFresh(first => conso(first, rest, out));
+const firsto = (first, out) => fresh(rest => conso(first, rest, out));
+const resto = (rest, out) => fresh(first => conso(first, rest, out));
 const emptyo = s => equiv(null, s);
-const appendo = (seq1, seq2, out) =>
+const appendo = (xs, ys, out) =>
   conde(
-    [emptyo(seq1), equiv(seq2, out)],
-    [callFresh(first => callFresh(rest => callFresh(rec =>
+    [emptyo(xs), equiv(ys, out)],
+    [fresh((first, rest, rec) =>
       conjs(
-        conso(first, rest, seq1),
+        conso(first, rest, xs),
         conso(first, rec, out),
-        appendo(rest, seq2, rec)))))]);
+        appendo(rest, ys, rec)))]);
 const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g))).map(x => x.map);
 const runAll = g => run(32, g);
 const present = maps => maps.map(m => [...m].map(([k, v]) => k + ' = ' + v).join('\n')).join('\n\n...\n\n');
 const play = f => {
-  const maps = runAll(callFresh(f));
+  const maps = runAll(fresh(f));
   if (maps && maps.length > 0) {
     if (maps.length > 1 || maps[0].size > 0) {
       console.log(present(maps));
