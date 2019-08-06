@@ -57,6 +57,15 @@ const Hash = class {
     next.entries = this.entries.map(([k, v]) => [k, v]);
     return next;
   }
+  keys() {
+    return this.entries.map(([k, _]) => k);
+  }
+  static eq(x, y) {
+    const xkeys = x.keys();
+    const ykeys = y.keys();
+    return xkeys.length === ykeys.length &&
+      xkeys.every(xk => ykeys.some(yk => eq(xk, yk) && eq(x.get(xk), y.get(yk))));
+  }
 }
 
 const State = class {
@@ -91,6 +100,8 @@ const Reified = class {
 const raise = x => { throw new Error(x); };
 const withMap = (state, map) => new State(map, state.nextId);
 const incNextId = (state, n = 1) => new State(state.map, state.nextId + n);
+const isArray = x => Array.isArray(x);
+const isHash = x => x instanceof Hash;
 const isLazy = x => x instanceof Lazy;
 const isNode = x => x instanceof Node;
 const isLVar = x => x instanceof LVar;
@@ -128,7 +139,9 @@ const range = max => {
 const eq = (x, y) =>
   x === y ||
   isLVar(x) && isLVar(y) && x.id === y.id ||
-  isCons(x) && isCons(y) && eq(x.head, y.head) && eq(x.tail, y.tail);
+  isCons(x) && isCons(y) && eq(x.head, y.head) && eq(x.tail, y.tail) ||
+  isArray(x) && isArray(y) && x.length === y.length && x.every((xi, i) => eq(xi, y[i])) ||
+  isHash(x) && isHash(y) && Hash.eq(x, y);
 const add = (map, key, value) => map ? map.set(key, value) : map;
 const walk = (x, map) => isLVar(x) && map && map.has(x) ? walk(map.get(x), map) : x;
 const unifyWalked = (x, y, map) =>
@@ -257,10 +270,20 @@ const reverseo = (xs, ys) =>
         appendo(yl, list(xf), ys)))]);
 const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g))).map(x => x.map);
 const runAll = g => run(32, g);
+const paramsOf = fn => acorn.Parser.parseExpressionAt(fn.toString(), 0).params.map(p => p.name);
+const nub = xs => {
+  const ys = [];
+  for (const x of xs) {
+    if (!ys.some(y => eq(x, y))) {
+      ys.push(x);
+    }
+  }
+  return ys;
+};
 const play = f => {
-  const maps = runAll(fresh(f));
+  const params = paramsOf(f);
+  const maps = nub(runAll(fresh(f)).map(m => resolveVars(params.map((n, i) => new LVar(i, n)), m)));
   if (maps && maps.length > 0) {
-    const params = paramsOf(f);
     const kvss = maps
       .map(m => m.entries.filter(([k, _]) => params.includes(k.name)))
       .filter(kvs => kvs.length > 0);
@@ -275,23 +298,3 @@ const play = f => {
   }
   return false;
 };
-
-// Taken from Angular.js codebase
-// http://docs.angularjs.org/tutorial/step_05
-
-const trimParens = s => {
-  const leftParen = s.length > 0 && s[0] === '(';
-  const rightParen = s.length > 0 && s[s.length - 1] === ')';
-  return s.substring(leftParen ? 1 : 0, s.length - (rightParen ? 1 : 0));
-};
-const upToArrow = s => {
-  const arrowIndex = s.indexOf('=>');
-  return (arrowIndex < 0 ? s : s.substring(0, arrowIndex)).trim();
-};
-const STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
-const FN_ARGS = /^(function)?\s*[^\(]*\(\s*([^\)]*)\)/m;
-const FN_ARG_SPLIT = /,/;
-const paramsOf = fn => 
-  trimParens(fn.toString().replace(STRIP_COMMENTS, '').match(FN_ARGS)[0])
-    .split(FN_ARG_SPLIT)
-    .map(upToArrow);
