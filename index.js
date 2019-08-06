@@ -93,6 +93,7 @@ const Reified = class {
 
 const _ = new LVar(-1, '_');
 const isIgnore = x => isLVar(x) && x.id === -1 && x.name === '_';
+const isReified = x => x instanceof Reified;
 const raise = x => { throw new Error(x); };
 const withMap = (state, map) => new State(map, state.nextId);
 const incNextId = (state, n = 1) => new State(state.map, state.nextId + n);
@@ -282,7 +283,7 @@ const play = f => {
   const maps = nub(runAll(fresh(f)).map(m => resolveVars(params.map((n, i) => new LVar(i, n)), m)));
   if (maps && maps.length > 0) {
     const kvss = maps
-      .map(m => m.entries.filter(([k, _]) => params.includes(k.name)))
+      .map(m => m.entries.filter(([k, v]) => params.includes(k.name) && !isIgnore(v) && !isReified(v)))
       .filter(kvs => kvs.length > 0);
     if (kvss.length > 0) {
       console.log(kvss
