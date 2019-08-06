@@ -91,6 +91,41 @@ const Reified = class {
   }
 };
 
+const Zero = class {
+  get succ() {
+    return new Succ(this);
+  }
+  get numeral() {
+    return 0;
+  }
+  toString() {
+    return '0';
+  }
+};
+const Succ = class {
+  constructor(pred) {
+    this.pred = pred;
+  }
+  get numeral() {
+    return 1 + this.pred.numeral;
+  }
+  get succ() {
+    return new Succ(this);
+  }
+  toString() {
+    return '' + this.numeral;
+  }
+};
+const isZero = x => x instanceof Zero;
+const isSucc = x => x instanceof Succ;
+const isPeano = x => isZero(x) || isSucc(x);
+const Peano = class {
+  static eq(x, y) {
+    return isZero(x) && isZero(y) ||
+           isSucc(x) && isSucc(y) && Peano.eq(x.pred, y.pred);
+  }
+};
+
 const _ = new LVar(-1, '_');
 const isIgnore = x => isLVar(x) && x.id === -1 && x.name === '_';
 const isReified = x => x instanceof Reified;
@@ -143,6 +178,7 @@ const eq = (x, y) =>
   !isIgnore(x) && !isIgnore(y) && (
     x === y ||
     isLVar(x) && isLVar(y) && x.id === y.id ||
+    isPeano(x) && isPeano(y) && Peano.eq(x, y) ||
     isCons(x) && isCons(y) && eq(x.head, y.head) && eq(x.tail, y.tail) ||
     isArray(x) && isArray(y) && x.length === y.length && x.every((xi, i) => eq(xi, y[i])) ||
     isHash(x) && isHash(y) && Hash.eq(x, y));
@@ -205,6 +241,7 @@ const deepWalkValue = (v, map) =>
   isLazy(v) ? deepWalk(v.f(), map) :
   isNode(v) ? new Node(deepWalk(v.head, map), deepWalk(v.next, map)) :
   isCons(v) ? new Cons(deepWalk(v.head, map), deepWalk(v.tail, map)) :
+  isSucc(v) ? new Succ(deepWalk(v.pred, map)) :
   isFunction(v) ? deepWalk(trampoline(v), map) :
   v;
 const deepWalk = (v, map) => deepWalkValue(walk(v, map), map);
@@ -227,6 +264,9 @@ const disj = (g1, g2) => state =>
     isFunction(g1) ? g1(state) : new Node(state),
     isFunction(g2) ? g2(state) : new Node(state));
 const disjs = (...goals) => {
+  if (goals.length === 0) {
+    return failg;
+  }
   let result = delayGoal(goals[0]);
   for (let i = 1; i < goals.length; ++i) {
     result = disj(result, delayGoal(goals[i]));
@@ -238,6 +278,9 @@ const conj = (g1, g2) => state =>
   isFunction(g2) ? flatMapStream(g2(state), g1) :
   new Node(state);
 const conjs = (...goals) => {
+  if (goals.length === 0) {
+    return succeedg;
+  }
   let result = delayGoal(goals[0]);
   for (let i = 1; i < goals.length; ++i) {
     result = conj(result, delayGoal(goals[i]));
@@ -329,15 +372,22 @@ const play = f => {
   return false;
 };
 
-const oneThruNineo = xs => everyg(x => membero(x, xs), list(1, 2, 3, 4, 5, 6, 7, 8, 9));
-const predo = (x, y) =>
-  isNumber(x) && isNumber(y) ? equiv(x - 1, y) :
-  isNumber(x) && isLVar(y) ? assertg([y, x - 1]) :
-  isNumber(y) && isLVar(x) ? assertg([x, y + 1]) :
-  raise('what to do?');
+const zero = new Zero();
+const one = zero.succ;
+const two = one.succ;
+const three = two.succ;
+const four = three.succ;
+const five = four.succ;
+const six = five.succ;
+const seven = six.succ;
+const eight = seven.succ;
+const nine = eight.succ;
+const predo = (x, y) => equiv(x, new Succ(y));
+const succo = (x, y) => equiv(new Succ(x), y);
+const zeroo = x => equiv(x, new Zero());
 const ato = (xs, i, x) =>
   conde(
-    [equiv(0, i), firsto(x, xs)],
+    [zeroo(i), firsto(x, xs)],
     [fresh((xr, j) =>
       conj(
         resto(xr, xs),
@@ -353,5 +403,6 @@ const crossCuto = (xs, ys) =>
         ato(yj, j, ys),
         ato(y, i, yj),
         equiv(x, y))),
-  list(...range(9))),
-  list(...range(9)));
+  list(zero, one, two, three, four, five, six, seven, eight)),
+  list(zero, one, two, three, four, five, six, seven, eight));
+const oneThruNineo = xs => everyg(x => membero(x, xs), list(one, two, three, four, five, six, seven, eight, nine));
