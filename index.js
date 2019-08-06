@@ -159,7 +159,7 @@ const mergeStreams = (x, y) =>
   x === null ? y :
   isNode(x) ? new Node(x.head, mergeStreams(x.next, y)) :
   isFunction(x) ? (() => mergeStreams(y, x())) :
-  isState(x) ? new Node(x, isState(y) ? singleStream(y) : y) :
+  isState(x) ? new Node(x, isState(y) ? new Node(y) : y) :
   raise('unrecognized element in stream: ' + show(x));
 const flatMapStream = (s, g) =>
   isLazy(s) ? flatMapStream(s.f(), g) :
@@ -192,12 +192,12 @@ const seqToArray = (n, s) => {
   }
   return result;
 };
-const singleStream = x => new Node(x, null);
 
 // in Clojure, lazy-seq eval's expressions when the first one is requested and then caches the results
 
 const equiv = (u, v) => state => {
   const newMap = unify(u, v, state.map);
+  // TODO: check if the map is unchanged?
   return newMap ? new Node(withMap(state, newMap)) : null;
 };
 const deepWalkValue = (v, map) =>
@@ -223,8 +223,8 @@ const callEmptyState = goal => goal(new State());
 const delayGoal = goal => state => () => goal(state);
 const disj = (g1, g2) => state =>
   mergeStreams(
-    isFunction(g1) ? g1(state) : singleStream(state),
-    isFunction(g2) ? g2(state) : singleStream(state));
+    isFunction(g1) ? g1(state) : new Node(state),
+    isFunction(g2) ? g2(state) : new Node(state));
 const disjs = (...goals) => {
   let result = delayGoal(goals[0]);
   for (let i = 1; i < goals.length; ++i) {
@@ -235,7 +235,7 @@ const disjs = (...goals) => {
 const conj = (g1, g2) => state =>
   isFunction(g1) ? flatMapStream(g1(state), g2) :
   isFunction(g2) ? flatMapStream(g2(state), g1) :
-  singleStream(state);
+  new Node(state);
 const conjs = (...goals) => {
   let result = delayGoal(goals[0]);
   for (let i = 1; i < goals.length; ++i) {
@@ -278,8 +278,9 @@ const reverseo = (xs, ys) =>
         conso(xf, xr, xs),
         reverseo(xr, yl),
         appendo(yl, list(xf), ys)))]);
-const succeedg = x => x;
-const failg = x => null;
+const succeedg = state => new Node(state.map ? state : withMap(state, new Hash()), null);
+const failg = state => null;
+const assertg = (...assertions) => s => new Node(new State(new Hash(assertions)), s);
 const everyg = (g, xs) => state => {
   xs = walk(xs, state.map);
   return function everygStep(g, xs) {
