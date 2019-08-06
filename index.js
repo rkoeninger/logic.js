@@ -16,16 +16,10 @@ const Cons = class {
     this.tail = tail;
   }
   toString() {
-    let result = '(' + this.head;
-    let more = this.tail;
-    while (isCons(more)) {
-      result += ' ' + more.head;
-      more = more.tail;
-    }
-    if (more) {
-      result += ' . ' + more;
-    }
-    return result + ')';
+    return Cons.isProper(this) ? `list(${toList(this).join(', ')})` : `cons(${this.head}, ${this.tail})`;
+  }
+  static isProper(x) {
+    return x === null || isCons(x) && Cons.isProper(x.tail);
   }
 };
 
