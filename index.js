@@ -97,6 +97,8 @@ const Reified = class {
   }
 };
 
+const _ = new LVar(-1, '_');
+const isIgnore = x => isLVar(x) && x.id === -1 && x.name === '_';
 const raise = x => { throw new Error(x); };
 const withMap = (state, map) => new State(map, state.nextId);
 const incNextId = (state, n = 1) => new State(state.map, state.nextId + n);
@@ -137,11 +139,12 @@ const range = max => {
   return result;
 };
 const eq = (x, y) =>
-  x === y ||
-  isLVar(x) && isLVar(y) && x.id === y.id ||
-  isCons(x) && isCons(y) && eq(x.head, y.head) && eq(x.tail, y.tail) ||
-  isArray(x) && isArray(y) && x.length === y.length && x.every((xi, i) => eq(xi, y[i])) ||
-  isHash(x) && isHash(y) && Hash.eq(x, y);
+  !isIgnore(x) && !isIgnore(y) && (
+    x === y ||
+    isLVar(x) && isLVar(y) && x.id === y.id ||
+    isCons(x) && isCons(y) && eq(x.head, y.head) && eq(x.tail, y.tail) ||
+    isArray(x) && isArray(y) && x.length === y.length && x.every((xi, i) => eq(xi, y[i])) ||
+    isHash(x) && isHash(y) && Hash.eq(x, y));
 const add = (map, key, value) => map ? map.set(key, value) : map;
 const walk = (x, map) => isLVar(x) && map && map.has(x) ? walk(map.get(x), map) : x;
 const unifyWalked = (x, y, map) =>
