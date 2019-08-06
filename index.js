@@ -29,8 +29,38 @@ const Cons = class {
   }
 };
 
+const Hash = class {
+  constructor(entries = []) {
+    this.entries = entries;
+  }
+  has(key) {
+    return this.entries.some(([k, _]) => eq(k, key));
+  }
+  get(key) {
+    if (this.has(key)) {
+      return this.entries.find(([k, _]) => eq(k, key))[1];
+    }
+    raise('key not found');
+  }
+  set(key, value) {
+    const next = this.copy();
+    const entry = next.entries.find(([k, _]) => eq(k, key));
+    if (entry) {
+      entry[1] = value;
+    } else {
+      next.entries.push([key, value]);
+    }
+    return next;
+  }
+  copy() {
+    const next = new Hash();
+    next.entries = this.entries.map(([k, v]) => [k, v]);
+    return next;
+  }
+}
+
 const State = class {
-  constructor(map = new Map(), nextId = 0) {
+  constructor(map = new Hash(), nextId = 0) {
     this.map = map;
     this.nextId = nextId;
   }
@@ -99,14 +129,7 @@ const eq = (x, y) =>
   x === y ||
   isLVar(x) && isLVar(y) && x.id === y.id ||
   isCons(x) && isCons(y) && eq(x.head, y.head) && eq(x.tail, y.tail);
-const add = (map, key, value) => {
-  if (map) {
-    const newMap = new Map(map);
-    newMap.set(key, value);
-    return newMap;
-  }
-  return map;
-};
+const add = (map, key, value) => map ? map.set(key, value) : map;
 const walk = (x, map) => isLVar(x) && map && map.has(x) ? walk(map.get(x), map) : x;
 const unifyWalked = (x, y, map) =>
   eq(x, y) ? map :
@@ -175,9 +198,9 @@ const reifyState = (v, map) =>
   isFunction(v) ? reify(trampoline(v), map) :
   map;
 const reify = (v, map) => reifyState(walk(v, map), map);
-const resolveVars = (vars, map) => new Map(vars.map(v => {
+const resolveVars = (vars, map) => new Hash(vars.map(v => {
   const v2 = deepWalk(v, map);
-  return deepWalk(v2, reify(v2, new Map()));
+  return [v, deepWalk(v2, reify(v2, new Hash()))];
 }));
 const callEmptyState = goal => goal(new State());
 const delayGoal = goal => state => () => goal(state);
@@ -239,8 +262,7 @@ const play = f => {
   if (maps && maps.length > 0) {
     const params = paramsOf(f);
     const kvss = maps
-      .map(m => [...m]
-        .filter(([k, _]) => params.includes(k.name)))
+      .map(m => m.entries.filter(([k, _]) => params.includes(k.name)))
       .filter(kvs => kvs.length > 0);
     if (kvss.length > 0) {
       console.log(kvss
