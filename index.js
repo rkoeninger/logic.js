@@ -201,14 +201,15 @@ const conso = (first, rest, out) => equiv(new Cons(first, rest), out);
 const firsto = (first, out) => fresh(rest => conso(first, rest, out));
 const resto = (rest, out) => fresh(first => conso(first, rest, out));
 const emptyo = s => equiv(null, s);
-const appendo = (xs, ys, out) =>
+const appendo = (xs, ys, zs) =>
   conde(
-    [emptyo(xs), equiv(ys, out)],
-    [fresh((first, rest, rec) =>
+    [emptyo(xs), equiv(ys, zs)],
+    [emptyo(ys), equiv(xs, zs)],
+    [fresh((f, xr, zr) =>
       conjs(
-        conso(first, rest, xs),
-        conso(first, rec, out),
-        appendo(rest, ys, rec)))]);
+        conso(f, xr, xs),
+        conso(f, zr, zs),
+        appendo(xr, ys, zr)))]);
 const membero = (x, xs) =>
   conde(
     [firsto(x, xs)],
