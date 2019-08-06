@@ -287,9 +287,19 @@ const play = f => {
       .filter(kvs => kvs.length > 0);
     if (kvss.length > 0) {
       console.log(kvss
-        .map(kvs => kvs
-          .map(([k, v]) => k + ' = ' + v)
-          .join('\n'))
+        .map(kvs => {
+          const names = new Set();
+          const duplicateNames = new Set();
+          for (const [k, _] of kvs) {
+            if (names.has(k.name)) {
+              duplicateNames.add(k.name);
+            }
+            names.add(k.name);
+          }
+          return kvs
+          .map(([k, v]) => (duplicateNames.has(k.name) ? k : k.name) + ' = ' + v)
+          .join('\n')
+        })
         .join('\n\n...\n\n'));
     }
     return true;
