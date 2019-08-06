@@ -98,6 +98,7 @@ const raise = x => { throw new Error(x); };
 const withMap = (state, map) => new State(map, state.nextId);
 const incNextId = (state, n = 1) => new State(state.map, state.nextId + n);
 const isArray = x => Array.isArray(x);
+const isNumber = x => typeof x === 'number';
 const isHash = x => x instanceof Hash;
 const isLazy = x => x instanceof Lazy;
 const isNode = x => x instanceof Node;
@@ -329,3 +330,28 @@ const play = f => {
 };
 
 const oneThruNineo = xs => everyg(x => membero(x, xs), list(1, 2, 3, 4, 5, 6, 7, 8, 9));
+const predo = (x, y) =>
+  isNumber(x) && isNumber(y) ? equiv(x - 1, y) :
+  isNumber(x) && isLVar(y) ? assertg([y, x - 1]) :
+  isNumber(y) && isLVar(x) ? assertg([x, y + 1]) :
+  raise('what to do?');
+const ato = (xs, i, x) =>
+  conde(
+    [equiv(0, i), firsto(x, xs)],
+    [fresh((xr, j) =>
+      conj(
+        resto(xr, xs),
+        predo(i, j),
+        ato(xr, j, x)))]);
+const crossCuto = (xs, ys) =>
+  everyg(i =>
+  everyg(j =>
+    fresh((x, y, xi, yj) =>
+      conjs(
+        ato(xi, i, xs),
+        ato(x, j, xi),
+        ato(yj, j, ys),
+        ato(y, i, yj),
+        equiv(x, y))),
+  list(...range(9))),
+  list(...range(9)));
