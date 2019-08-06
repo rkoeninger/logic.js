@@ -6,7 +6,7 @@ const LVar = class {
     this.name = name;
   }
   toString() {
-    return this.name || '#' + this.id;
+    return (this.name || '') + '#' + this.id;
   }
 };
 
@@ -16,11 +16,14 @@ const Cons = class {
     this.tail = tail;
   }
   toString() {
-    let result = 'list(' + this.head;
+    let result = '(' + this.head;
     let more = this.tail;
-    while (more) {
-      result += ', ' + more.head;
+    while (isCons(more)) {
+      result += ' ' + more.head;
       more = more.tail;
+    }
+    if (more) {
+      result += ' . ' + more;
     }
     return result + ')';
   }
@@ -157,8 +160,13 @@ const equiv = (u, v) => state => {
   const newMap = unify(u, v, state.map);
   return newMap ? new Node(withMap(state, newMap)) : null;
 };
-const disj = (g1, g2) => state => mergeStreams(g1(state), g2(state));
-const conj = (g1, g2) => state => flatMapStream(g1(state), g2);
+const deepWalkValue = (v, map) =>
+  isLazy(v) ? deepWalk(v.f(), map) :
+  isNode(v) ? new Node(deepWalk(v.head, map), deepWalk(v.next, map)) :
+  isCons(v) ? new Cons(deepWalk(v.head, map), deepWalk(v.tail, map)) :
+  isFunction(v) ? deepWalk(trampoline(v), map) :
+  v;
+const deepWalk = (v, map) => deepWalkValue(walk(v, map), map);
 const reifyState = (v, map) =>
   isLVar(v) ? add(map, v, new Reified(map.size)) :
   isLazy(v) ? reify(v.f(), map) :
@@ -167,26 +175,25 @@ const reifyState = (v, map) =>
   isFunction(v) ? reify(trampoline(v), map) :
   map;
 const reify = (v, map) => reifyState(walk(v, map), map);
-const deepWalkValue = (v, map) =>
-  isLazy(v) ? deepWalk(v.f(), map) :
-  isNode(v) ? new Node(deepWalk(v.head, map), deepWalk(v.next, map)) :
-  isCons(v) ? new Cons(deepWalk(v.head, map), deepWalk(v.tail, map)) :
-  isFunction(v) ? deepWalk(trampoline(v), map) :
-  v;
-const deepWalk = (v, map) => deepWalkValue(walk(v, map), map);
+const resolveVars = (vars, map) => new Map(vars.map(v => {
+  const v2 = deepWalk(v, map);
+  return deepWalk(v2, reify(v2, new Map()));
+}));
 const callEmptyState = goal => goal(new State());
 const delayGoal = goal => state => () => goal(state);
+const disj = (g1, g2) => state => mergeStreams(g1(state), g2(state));
 const disjs = (...goals) => {
-  let result = delayGoal(goals[goals.length - 1]);
-  for (let i = goals.length - 2; i >= 0; --i) {
-    result = disj(delayGoal(goals[i]), result);
+  let result = delayGoal(goals[0]);
+  for (let i = 1; i < goals.length; ++i) {
+    result = disj(result, delayGoal(goals[i]));
   }
   return result;
 };
+const conj = (g1, g2) => state => flatMapStream(g1(state), g2);
 const conjs = (...goals) => {
-  let result = delayGoal(goals[goals.length - 1]);
-  for (let i = goals.length - 2; i >= 0; --i) {
-    result = conj(delayGoal(goals[i]), result);
+  let result = delayGoal(goals[0]);
+  for (let i = 1; i < goals.length; ++i) {
+    result = conj(result, delayGoal(goals[i]));
   }
   return result;
 };
