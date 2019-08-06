@@ -16,7 +16,7 @@ const Cons = class {
     this.tail = tail;
   }
   toString() {
-    return Cons.isProper(this) ? `list(${toList(this).join(', ')})` : `cons(${this.head}, ${this.tail})`;
+    return Cons.isProper(this) ? `list(${toList(this).map(show).join(', ')})` : `cons(${this.head}, ${this.tail})`;
   }
   static isProper(x) {
     return x === null || isCons(x) && Cons.isProper(x.tail);
@@ -60,7 +60,7 @@ const Hash = class {
     return xkeys.length === ykeys.length &&
       xkeys.every(xk => ykeys.some(yk => eq(xk, yk) && eq(x.get(xk), y.get(yk))));
   }
-}
+};
 
 const State = class {
   constructor(map = new Hash(), nextId = 0) {
@@ -104,6 +104,7 @@ const isNode = x => x instanceof Node;
 const isLVar = x => x instanceof LVar;
 const isCons = x => x instanceof Cons;
 const isList = x => x === null || isCons(x);
+const isState = x => x instanceof State;
 const isFunction = x => typeof x === 'function';
 const trampoline = f => {
   while (isFunction(f)) {
@@ -133,6 +134,10 @@ const range = max => {
   }
   return result;
 };
+const show = x =>
+  x === null ? 'null' :
+  x === undefined ? 'undefined' :
+  x.toString();
 const eq = (x, y) =>
   !isIgnore(x) && !isIgnore(y) && (
     x === y ||
@@ -154,7 +159,8 @@ const mergeStreams = (x, y) =>
   x === null ? y :
   isNode(x) ? new Node(x.head, mergeStreams(x.next, y)) :
   isFunction(x) ? (() => mergeStreams(y, x())) :
-  raise('unrecognized element type in stream: ' + x);
+  isState(x) ? new Node(x, isState(y) ? singleStream(y) : y) :
+  raise('unrecognized element in stream: ' + show(x));
 const flatMapStream = (s, g) =>
   isLazy(s) ? flatMapStream(s.f(), g) :
   isNode(s) ? mergeStreams(g(s.head), flatMapStream(s.next, g)) :
@@ -215,7 +221,10 @@ const resolveVars = (vars, map) => new Hash(vars.map(v => {
 }));
 const callEmptyState = goal => goal(new State());
 const delayGoal = goal => state => () => goal(state);
-const disj = (g1, g2) => state => mergeStreams(g1(state), g2(state));
+const disj = (g1, g2) => state =>
+  mergeStreams(
+    isFunction(g1) ? g1(state) : singleStream(state),
+    isFunction(g2) ? g2(state) : singleStream(state));
 const disjs = (...goals) => {
   let result = delayGoal(goals[0]);
   for (let i = 1; i < goals.length; ++i) {
@@ -223,7 +232,10 @@ const disjs = (...goals) => {
   }
   return result;
 };
-const conj = (g1, g2) => state => flatMapStream(g1(state), g2);
+const conj = (g1, g2) => state =>
+  isFunction(g1) ? flatMapStream(g1(state), g2) :
+  isFunction(g2) ? flatMapStream(g2(state), g1) :
+  singleStream(state);
 const conjs = (...goals) => {
   let result = delayGoal(goals[0]);
   for (let i = 1; i < goals.length; ++i) {
@@ -231,13 +243,13 @@ const conjs = (...goals) => {
   }
   return result;
 };
-const conde = (...clauses) => disjs(...clauses.map(c => conjs(...c)));
 const fresh = f => state => {
   const args = paramsOf(f);
   const arity = args.length;
   const vars = range(arity).map(n => new LVar(state.nextId + n, args[n]));
   return f(...vars)(incNextId(state, arity));
 };
+const conde = (...clauses) => disjs(...clauses.map(c => conjs(...c)));
 const conso = (first, rest, out) => equiv(new Cons(first, rest), out);
 const firsto = (first, out) => fresh(rest => conso(first, rest, out));
 const resto = (rest, out) => fresh(first => conso(first, rest, out));
@@ -266,6 +278,14 @@ const reverseo = (xs, ys) =>
         conso(xf, xr, xs),
         reverseo(xr, yl),
         appendo(yl, list(xf), ys)))]);
+const succeedg = x => x;
+const failg = x => null;
+const everyg = (g, xs) => state => {
+  xs = walk(xs, state.map);
+  return function everygStep(g, xs) {
+    return isCons(xs) ? conj(g(xs.head), everygStep(g, xs.tail, state)) : succeedg;
+  }(g, xs)(state);
+};
 const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g))).map(x => x.map);
 const runAll = g => run(32, g);
 const paramsOf = fn => acorn.Parser.parseExpressionAt(fn.toString(), 0).params.map(p => p.name);
@@ -297,12 +317,14 @@ const play = f => {
             names.add(k.name);
           }
           return kvs
-          .map(([k, v]) => (duplicateNames.has(k.name) ? k : k.name) + ' = ' + v)
-          .join('\n')
+          .map(([k, v]) => (duplicateNames.has(k.name) ? k : k.name) + ' = ' + show(v))
+          .join(' | ')
         })
-        .join('\n\n...\n\n'));
+        .join('\n'));
     }
     return true;
   }
   return false;
 };
+
+const oneThruNineo = xs => everyg(x => membero(x, xs), list(1, 2, 3, 4, 5, 6, 7, 8, 9));
