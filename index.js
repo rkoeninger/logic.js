@@ -16,7 +16,7 @@ const Cons = class {
     this.tail = tail;
   }
   toString() {
-    return Cons.isProper(this) ? `list(${toList(this).map(show).join(', ')})` : `cons(${this.head}, ${this.tail})`;
+    return Cons.isProper(this) ? `list(${toArray(this).map(show).join(', ')})` : `cons(${this.head}, ${this.tail})`;
   }
   static isProper(x) {
     return x === null || isCons(x) && Cons.isProper(x.tail);
@@ -155,7 +155,7 @@ const list = (...xs) => {
   }
   return result;
 };
-const toList = x => {
+const toArray = x => {
   const result = [];
   while (isCons(x)) {
     result.push(x.head);
@@ -190,7 +190,10 @@ const unifyWalked = (x, y, map) =>
   isLVar(y) ? add(map, y, x) :
   unifyTerms(x, y, map);
 const unify = (x, y, map) => unifyWalked(walk(x, map), walk(y, map), map);
-const unifyTerms = (x, y, map) => isCons(x) && isCons(y) ? unify(x.tail, y.tail, unify(x.head, y.head, map)) : null;
+const unifyTerms = (x, y, map) =>
+  isCons(x) && isCons(y) ? unify(x.tail, y.tail, unify(x.head, y.head, map)) :
+  isSucc(x) && isSucc(y) ? unify(x.pred, y.pred, map) :
+  null;
 const mergeStreams = (x, y) =>
   isLazy(x) ? mergeStreams(x.f(), y) :
   x === null ? y :
@@ -250,6 +253,7 @@ const reifyState = (v, map) =>
   isLazy(v) ? reify(v.f(), map) :
   isNode(v) ? reify(realize(v.next), reify(realize(v.head), map)) :
   isCons(v) ? reify(v.tail, reify(v.head, map)) :
+  isSucc(v) ? reify(v.pred, map) :
   isFunction(v) ? reify(trampoline(v), map) :
   map;
 const reify = (v, map) => reifyState(walk(v, map), map);
