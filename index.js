@@ -386,14 +386,36 @@ const six = five.succ;
 const seven = six.succ;
 const eight = seven.succ;
 const nine = eight.succ;
+const peano = n => n === 0 ? zero : new Succ(peano(n - 1));
 const predo = (x, y) => equiv(x, new Succ(y));
 const succo = (x, y) => equiv(new Succ(x), y);
-const zeroo = x => equiv(x, new Zero());
+const zeroo = x => equiv(x, zero);
+const oneo = x => equiv(x, one);
+const addo = (x, y, z) =>
+  conde(
+    [zeroo(x), equiv(y, z)],
+    [zeroo(y), equiv(x, z)],
+    [fresh((xp, ys) =>
+      conjs(
+        predo(x, xp),
+        succo(y, ys),
+        addo(xp, ys, z)))]);
+const mulo = (x, y, z) =>
+  conde(
+    [zeroo(x), zeroo(z)],
+    [zeroo(y), zeroo(z)],
+    [oneo(x), equiv(y, z)],
+    [oneo(y), equiv(x, z)],
+    [fresh((xp, yz) =>
+      conjs(
+        predo(x, xp),
+        addo(y, z, yz),
+        mulo(xp, y, yz)))]);
 const ato = (xs, i, x) =>
   conde(
     [zeroo(i), firsto(x, xs)],
     [fresh((xr, j) =>
-      conj(
+      conjs(
         resto(xr, xs),
         predo(i, j),
         ato(xr, j, x)))]);
@@ -407,6 +429,6 @@ const crossCuto = (xs, ys) =>
         ato(yj, j, ys),
         ato(y, i, yj),
         equiv(x, y))),
-  list(zero, one, two, three, four, five, six, seven, eight)),
-  list(zero, one, two, three, four, five, six, seven, eight));
-const oneThruNineo = xs => everyg(x => membero(x, xs), list(one, two, three, four, five, six, seven, eight, nine));
+  list(...range(9).map(peano)),
+  list(...range(9).map(peano))));
+const oneThruNineo = xs => everyg(x => membero(x, xs), list(...range(9).map(x => peano(x + 1))));
