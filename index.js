@@ -210,7 +210,7 @@ const mergeStreams = (x, y) =>
   raise('unrecognized element in stream: ' + show(x));
 const flatMapStream = (s, g) =>
   isLazy(s) ? flatMapStream(s.f(), g) :
-  isNode(s) ? mergeStreams(g(s.head), flatMapStream(s.next, g)) :
+  isNode(s) ? (isFunction(g) ? mergeStreams(g(s.head), flatMapStream(s.next, g)) : s) :
   isFunction(s) ? (() => flatMapStream(s(), g)) :
   s;
 const realize = s =>
