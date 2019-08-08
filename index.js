@@ -580,6 +580,30 @@ test('firsto infer first ignore rest values',
 test('firsto infer first of whole',
   x => firsto(1, list(x, 2, 3)),
   successful({ 'x#0': 1 }));
+test('resto tautology',
+  () => resto(list(2, 3), list(1, 2, 3)),
+  tautology);
+test('resto tautology ignore first',
+  () => resto(list(2, 3), list(_, 2, 3)),
+  tautology);
+test('resto tautology ignore all list values',
+  () => resto(list(_, _), list(_, _, _)),
+  tautology);
+test('resto tautology ignore all',
+  () => resto(_, _),
+  tautology);
+test('resto tautology rest and rest of whole',
+  x => resto(x, new Cons(1, x)),
+  tautology);
+test('resto infer rest',
+  x => resto(x, list(1, 2, 3)),
+  successful({ 'x#0': list(2, 3) }));
+test('resto infer rest ignore first',
+  x => resto(x, list(_, 2, 3)),
+  successful({ 'x#0': list(2, 3) }));
+test('resto infer rest of whole',
+  x => resto(list(2, 3), new Cons(1, x)),
+  successful({ 'x#0': list(2, 3) }));
 
 if (testsFailed === 0) {
   console.log(`${testsPassed} tests passed`);
