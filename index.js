@@ -406,11 +406,11 @@ const mulo = (x, y, z) =>
     [zeroo(y), zeroo(z)],
     [oneo(x), equiv(y, z)],
     [oneo(y), equiv(x, z)],
-    [fresh((xp, yz) =>
+    [fresh((xp, w) =>
       conjs(
         predo(x, xp),
-        addo(y, z, yz),
-        mulo(xp, y, yz)))]);
+        mulo(xp, y, w),
+        addo(y, w, z)))]);
 const ato = (xs, i, x) =>
   conde(
     [zeroo(i), firsto(x, xs)],
