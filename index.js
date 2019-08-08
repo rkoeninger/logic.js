@@ -422,17 +422,18 @@ const gteo = (x, y) => addo(y, _, x);
 const lteo = (x, y) => addo(x, _, y);
 const gto = (x, y) => fresh(diff => conj(addo(y, diff, x), gteo(diff, one)));
 const lto = (x, y) => fresh(diff => conj(addo(x, diff, y), gteo(diff, one)));
-const mulo = (x, y, z) =>
-  conde(
-    [zeroo(x), zeroo(z)],
-    [zeroo(y), zeroo(z)],
-    [oneo(x), equiv(y, z)],
-    [oneo(y), equiv(x, z)],
-    [fresh((xp, w) =>
-      conj(
-        predo(x, xp),
-        mulo(xp, y, w),
-        addo(y, w, z)))]);
+// TODO: only does forward multiplication, doesn't do division
+// const mulo = (x, y, z) =>
+//   conde(
+//     [zeroo(x), zeroo(z)],
+//     [zeroo(y), zeroo(z)],
+//     [oneo(x), equiv(y, z)],
+//     [oneo(y), equiv(x, z)],
+//     [fresh((xp, w) =>
+//       conj(
+//         predo(x, xp),
+//         mulo(xp, y, w),
+//         addo(y, w, z)))]);
 const rangeo = (x, xs) =>
   conde(
     [zeroo(x), emptyo(xs)],
