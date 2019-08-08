@@ -268,7 +268,6 @@ const resolveVars = (vars, map) => new Hash(vars.map(v => {
   const v2 = deepWalk(v, map);
   return [v, deepWalk(v2, reify(v2, new Hash()))];
 }));
-const callEmptyState = goal => goal(new State());
 const delayGoal = goal => state => () => goal(state);
 const disj = (...goals) => {
   switch (goals.length) {
@@ -350,7 +349,7 @@ const everyg = (g, xs) => state => {
     return isCons(xs) ? conj(g(xs.head), everygStep(g, xs.tail, state)) : succeedg;
   }(g, xs)(state);
 };
-const run = (n, g) => seqToArray(n, streamToSeq(callEmptyState(g))).map(x => x.map);
+const run = (n, g) => seqToArray(n, streamToSeq(g(new State()))).map(x => x.map);
 const runAll = g => run(32, g);
 const paramsOf = fn => acorn.Parser.parseExpressionAt(fn.toString(), 0).params.map(p => p.name);
 const nub = xs => {
