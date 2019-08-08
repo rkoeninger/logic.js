@@ -270,13 +270,19 @@ const resolveVars = (vars, map) => new Hash(vars.map(v => {
 }));
 const callEmptyState = goal => goal(new State());
 const delayGoal = goal => state => () => goal(state);
-const disj = (g1, g2) => state =>
+const disj2 = (g1, g2) => state =>
   mergeStreams(
     isFunction(g1) ? g1(state) : new Node(state),
     isFunction(g2) ? g2(state) : new Node(state));
-const disjs = (...goals) => {
+const disj = (...goals) => {
   if (goals.length === 0) {
     return failg;
+  }
+  if (goals.length === 1) {
+    return goals[0];
+  }
+  if (goals.length === 2) {
+    return disj2(goals[0], goals[1]);
   }
   let result = delayGoal(goals[0]);
   for (let i = 1; i < goals.length; ++i) {
@@ -284,13 +290,19 @@ const disjs = (...goals) => {
   }
   return result;
 };
-const conj = (g1, g2) => state =>
+const conj2 = (g1, g2) => state =>
   isFunction(g1) ? flatMapStream(g1(state), g2) :
   isFunction(g2) ? flatMapStream(g2(state), g1) :
   new Node(state);
-const conjs = (...goals) => {
+const conj = (...goals) => {
   if (goals.length === 0) {
     return succeedg;
+  }
+  if (goals.length === 1) {
+    return goals[0];
+  }
+  if (goals.length === 2) {
+    return conj2(goals[0], goals[1]);
   }
   let result = delayGoal(goals[0]);
   for (let i = 1; i < goals.length; ++i) {
@@ -304,7 +316,7 @@ const fresh = f => state => {
   const vars = range(arity).map(n => new LVar(state.nextId + n, args[n]));
   return f(...vars)(incNextId(state, arity));
 };
-const conde = (...clauses) => disjs(...clauses.map(c => conjs(...c)));
+const conde = (...clauses) => disj(...clauses.map(c => conj(...c)));
 const conso = (first, rest, out) => equiv(new Cons(first, rest), out);
 const firsto = (first, out) => fresh(rest => conso(first, rest, out));
 const resto = (rest, out) => fresh(first => conso(first, rest, out));
@@ -314,7 +326,7 @@ const appendo = (xs, ys, zs) =>
     [emptyo(xs), equiv(ys, zs)],
     [emptyo(ys), equiv(xs, zs)],
     [fresh((f, xr, zr) =>
-      conjs(
+      conj(
         conso(f, xr, xs),
         conso(f, zr, zs),
         appendo(xr, ys, zr)))]);
@@ -329,7 +341,7 @@ const reverseo = (xs, ys) =>
   conde(
     [emptyo(xs), emptyo(ys)],
     [fresh((xf, xr, yl) =>
-      conjs(
+      conj(
         conso(xf, xr, xs),
         reverseo(xr, yl),
         appendo(yl, list(xf), ys)))]);
@@ -423,7 +435,7 @@ const addo = (x, y, z) =>
     [zeroo(x), equiv(y, z)],
     [zeroo(y), equiv(x, z)],
     [fresh((xp, zp) =>
-      conjs(
+      conj(
         predo(x, xp),
         predo(z, zp),
         addo(xp, y, zp)))]);
@@ -434,7 +446,7 @@ const mulo = (x, y, z) =>
     [oneo(x), equiv(y, z)],
     [oneo(y), equiv(x, z)],
     [fresh((xp, w) =>
-      conjs(
+      conj(
         predo(x, xp),
         mulo(xp, y, w),
         addo(y, w, z)))]);
@@ -442,7 +454,7 @@ const rangeo = (x, xs) =>
   conde(
     [zeroo(x), emptyo(xs)],
     [fresh((xp, xr) =>
-      conjs(
+      conj(
         predo(x, xp),
         conso(x, xr, xs),
         rangeo(xp, xr)))]);
@@ -450,7 +462,7 @@ const ato = (xs, i, x) =>
   conde(
     [zeroo(i), firsto(x, xs)],
     [fresh((xr, j) =>
-      conjs(
+      conj(
         resto(xr, xs),
         predo(i, j),
         ato(xr, j, x)))]);
@@ -458,7 +470,7 @@ const crossCuto = (rows, cols) =>
   everyg(i =>
     everyg(j =>
       fresh((x, row, col) =>
-        conjs(
+        conj(
           ato(rows, i, row),
           ato(row,  j, x),
           ato(cols, j, col),
