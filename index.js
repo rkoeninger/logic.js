@@ -605,6 +605,12 @@ test('appendo check prefix',
 test('appendo check suffix',
   () => appendo(_, list(3, 4), list(1, 2, 3, 4)),
   tautology);
+test('appendo infer prefix ignore suffix values',
+  x => appendo(x, list(_, _), list(1, 2, 3, 4)),
+  successful({ x: list(1, 2) }));
+test('appendo infer suffix ignore prefix values',
+  x => appendo(list(_, _), x, list(1, 2, 3, 4)),
+  successful({ x: list(3, 4) }));
 test('appendo cross-infer',
   (x, y, z, w, v) => appendo(list(1, x, 3), list(y, 5, 6, z), list(1, 2, w, 4, v, 6, 7)),
   successful({ x: 2, y: 4, z: 7, w: 3, v: 5 }));
