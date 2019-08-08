@@ -420,6 +420,8 @@ const addo = (x, y, z) =>
         addo(xp, y, zp)))]);
 const gteo = (x, y) => addo(y, _, x);
 const lteo = (x, y) => addo(x, _, y);
+const gto = (x, y) => fresh(diff => conj(addo(y, diff, x), gteo(diff, one)));
+const lto = (x, y) => fresh(diff => conj(addo(x, diff, y), gteo(diff, one)));
 const mulo = (x, y, z) =>
   conde(
     [zeroo(x), zeroo(z)],
