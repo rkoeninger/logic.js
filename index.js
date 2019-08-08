@@ -30,6 +30,9 @@ const Hash = class {
   has(key) {
     return this.entries.some(([k, _]) => eq(k, key));
   }
+  get size() {
+    return this.entries.length;
+  }
   get(key) {
     if (this.has(key)) {
       return this.entries.find(([k, _]) => eq(k, key))[1];
