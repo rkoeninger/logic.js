@@ -197,7 +197,37 @@ test('membero single value against all variable list',
 test('membero infer single value in list',
   x => membero(2, list(1, x, 3)),
   successful({ x: 2 }));
-// TODO: predo, addo - actually, remove succo
+test('predo tautology',
+  () => predo(five, four),
+  tautology);
+test('predo-succo tautology',
+  (x, y) => conj(predo(x, y), succo(y, x)),
+  tautology);
+test('succo tautology',
+  () => succo(four, five),
+  tautology);
+test('addo tautology',
+  () => addo(three, four, seven),
+  tautology);
+test('addo compute sum',
+  x => addo(two, six, x),
+  successful({ x: eight }));
+test('addo compute difference',
+  x => addo(two, x, five),
+  successful({ x: three }));
+test('addo compute difference other way',
+  x => addo(x, two, five),
+  successful({ x: three }));
+test('addo impossible difference',
+  x => addo(five, x, three),
+  contradiction);
+test('addo all addends',
+  (x, y) => addo(x, y, three),
+  successful([
+    { x: zero, y: three },
+    { x: one,   y: two },
+    { x: two,   y: one },
+    { x: three, y: zero }]));
 test('gteo tautology',
   () => gteo(five, two),
   tautology);
@@ -216,6 +246,27 @@ test('lteo equality',
 test('lteo contradiction',
   () => lteo(three, one),
   contradiction);
+test('gto tautology',
+  () => gto(five, two),
+  tautology);
+test('gto equality',
+  () => gto(four, four),
+  contradiction);
+test('gto contradiction',
+  () => gto(one, three),
+  contradiction);
+test('lto tautology',
+  () => lto(two, five),
+  tautology);
+test('lto equality',
+  () => lto(four, four),
+  contradiction);
+test('lto contradiction',
+  () => lto(three, one),
+  contradiction);
+test('everyg tautology',
+  () => everyg(x => gteo(x, one), list(one, two, three)),
+  tautology);
 
 if (testsFailed === 0) {
   console.log(`${testsPassed} tests passed`);
