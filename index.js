@@ -603,6 +603,12 @@ test('resto infer rest ignore first',
 test('resto infer rest of whole',
   x => resto(list(2, 3), new Cons(1, x)),
   successful({ 'x#0': list(2, 3) }));
+test('appendo tautology',
+  () => appendo(list(1, 2), list(3, 4), list(1, 2, 3, 4)),
+  tautology);
+test('appendo explicit contradiction',
+  () => appendo(list(1, 2), list(8, 9), list(1, 2, 3, 4)),
+  contradiction);
 
 if (testsFailed === 0) {
   console.log(`${testsPassed} tests passed`);
