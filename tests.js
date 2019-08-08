@@ -264,6 +264,28 @@ test('lto equality',
 test('lto contradiction',
   () => lto(three, one),
   contradiction);
+test('ato tautology',
+  () => ato(list(1, 2, 3), zero, 1),
+  tautology);
+test('ato access at index',
+  x => ato(list(1, 2, 3), one, x),
+  successful({ x: 2 }));
+test('ato infer index',
+  x => ato(list(1, 2, 3), x, 2),
+  successful({ x: one }));
+test('ato infer index multiple',
+  x => ato(list(1, 2, 3, 2, 4, 1, 5, 2, 4, 2), x, 2),
+  successful([
+    { x: one },
+    { x: three },
+    { x: seven },
+    { x: nine }]));
+test('ato infer index not found',
+  x => ato(list(1, 2, 3, 2, 4, 1, 5, 2, 4, 2), x, 9),
+  contradiction);
+test('ato access index out of bounds',
+  x => ato(list(1, 2, 3, 4), seven, x),
+  contradiction);
 test('everyg tautology',
   () => everyg(x => gteo(x, one), list(one, two, three)),
   tautology);
