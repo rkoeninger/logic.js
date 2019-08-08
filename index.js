@@ -411,6 +411,14 @@ const mulo = (x, y, z) =>
         predo(x, xp),
         mulo(xp, y, w),
         addo(y, w, z)))]);
+const rangeo = (x, xs) =>
+  conde(
+    [zeroo(x), emptyo(xs)],
+    [fresh((xp, xr) =>
+      conjs(
+        predo(x, xp),
+        conso(x, xr, xs),
+        rangeo(xp, xr)))]);
 const ato = (xs, i, x) =>
   conde(
     [zeroo(i), firsto(x, xs)],
