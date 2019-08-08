@@ -270,19 +270,17 @@ const resolveVars = (vars, map) => new Hash(vars.map(v => {
 }));
 const callEmptyState = goal => goal(new State());
 const delayGoal = goal => state => () => goal(state);
-const disj2 = (g1, g2) => state =>
-  mergeStreams(
-    isFunction(g1) ? g1(state) : new Node(state),
-    isFunction(g2) ? g2(state) : new Node(state));
 const disj = (...goals) => {
-  if (goals.length === 0) {
-    return failg;
-  }
-  if (goals.length === 1) {
-    return goals[0];
-  }
-  if (goals.length === 2) {
-    return disj2(goals[0], goals[1]);
+  switch (goals.length) {
+    case 0: return failg;
+    case 1: return goals[0];
+    case 2:
+      const g0 = goals[0];
+      const g1 = goals[1];
+      return state =>
+        mergeStreams(
+          isFunction(g0) ? g0(state) : new Node(state),
+          isFunction(g1) ? g1(state) : new Node(state));
   }
   let result = delayGoal(goals[0]);
   for (let i = 1; i < goals.length; ++i) {
@@ -290,19 +288,17 @@ const disj = (...goals) => {
   }
   return result;
 };
-const conj2 = (g1, g2) => state =>
-  isFunction(g1) ? flatMapStream(g1(state), g2) :
-  isFunction(g2) ? flatMapStream(g2(state), g1) :
-  new Node(state);
 const conj = (...goals) => {
-  if (goals.length === 0) {
-    return succeedg;
-  }
-  if (goals.length === 1) {
-    return goals[0];
-  }
-  if (goals.length === 2) {
-    return conj2(goals[0], goals[1]);
+  switch (goals.length) {
+    case 0: return succeedg;
+    case 1: goals[0];
+    case 2:
+      const g0 = goals[0];
+      const g1 = goals[1];
+      return state =>
+        isFunction(g0) ? flatMapStream(g0(state), g1) :
+        isFunction(g1) ? flatMapStream(g1(state), g0) :
+        new Node(state);
   }
   let result = delayGoal(goals[0]);
   for (let i = 1; i < goals.length; ++i) {
