@@ -418,6 +418,8 @@ const addo = (x, y, z) =>
         predo(x, xp),
         predo(z, zp),
         addo(xp, y, zp)))]);
+const gteo = (x, y) => addo(y, _, x);
+const lteo = (x, y) => addo(x, _, y);
 const mulo = (x, y, z) =>
   conde(
     [zeroo(x), zeroo(z)],
@@ -659,6 +661,25 @@ test('membero single value against all variable list',
 test('membero infer single value in list',
   x => membero(2, list(1, x, 3)),
   successful({ x: 2 }));
+// TODO: predo, addo - actually, remove succo
+test('gteo tautology',
+  () => gteo(five, two),
+  tautology);
+test('gteo equality',
+  () => gteo(four, four),
+  tautology);
+test('gteo contradiction',
+  () => gteo(one, three),
+  contradiction);
+test('lteo tautology',
+  () => lteo(two, five),
+  tautology);
+test('lteo equality',
+  () => lteo(four, four),
+  tautology);
+test('lteo contradiction',
+  () => lteo(three, one),
+  contradiction);
 
 if (testsFailed === 0) {
   console.log(`${testsPassed} tests passed`);
