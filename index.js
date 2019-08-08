@@ -542,6 +542,48 @@ test('conso cross-infer',
 test('conso ignore first and rest, whole is non-list',
   () => conso(_, _, 3),
   contradiction);
+test('conso non-matching values',
+  () => conso(5, list(9), list(8, 6)),
+  contradiction);
+test('conso non-matching values ignore first',
+  () => conso(_, list(9), list(_, 6)),
+  contradiction);
+test('conso non-matching values ignore rest',
+  () => conso(9, _, list(6, _)),
+  contradiction);
+test('conso non-matching list lengths',
+  () => conso(1, list(2, 3), list(1, 2, 3, 4)),
+  contradiction);
+test('conso non-matching list lengths ignore some values',
+  () => conso(_, list(2, 3), list(1, _, 3, _)),
+  contradiction);
+test('conso non-matching list lengths ignore all values',
+  () => conso(_, list(_, _), list(_, _, _, _)),
+  contradiction);
+test('firsto tautology',
+  () => firsto(1, list(1, 2, 3)),
+  tautology);
+test('firsto tautology ignore rest',
+  () => firsto(1, list(1, _, _)),
+  tautology);
+test('firsto tautology ignore all whole values',
+  () => firsto(_, list(_, _, _)),
+  tautology);
+test('firsto tautology ignore all',
+  () => firsto(_, _),
+  tautology);
+test('firsto tautology first and first of whole',
+  x => firsto(x, list(x, 2, 3)),
+  tautology);
+test('firsto infer first',
+  x => firsto(x, list(1, 2, 3)),
+  successful({ 'x#0': 1 }));
+test('firsto infer first ignore rest values',
+  x => firsto(x, list(1, _, _)),
+  successful({ 'x#0': 1 }));
+test('firsto infer first of whole',
+  x => firsto(1, list(x, 2, 3)),
+  successful({ 'x#0': 1 }));
 
 if (testsFailed === 0) {
   console.log(`${testsPassed} tests passed`);
