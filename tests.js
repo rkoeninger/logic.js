@@ -289,6 +289,18 @@ test('ato access index out of bounds',
 test('everyg tautology',
   () => everyg(x => gteo(x, one), list(one, two, three)),
   tautology);
+test('everyg tautology multiple conditions',
+  () => conj(everyg(x => gteo(x, one), list(one, two, three)), everyg(x => lteo(x, three), list(one, two, three))),
+  tautology);
+test('everyg all but one hold',
+  () => everyg(x => gteo(x, two), list(one, two, three)),
+  contradiction);
+test('someg match one of multiple values',
+  () => someg(x => equiv(x, 2), list(1, 2, 3)),
+  tautology);
+test('someg fail to match one of multiple values',
+  () => someg(x => equiv(x, 8), list(1, 2, 3)),
+  contradiction);
 
 if (testsFailed === 0) {
   console.log(`${testsPassed} tests passed`);

@@ -438,7 +438,13 @@ const assertg = (...assertions) => s => new Node(new State(new Hash(assertions))
 const everyg = (g, xs) => state => {
   xs = walk(xs, state.map);
   return function everygStep(g, xs) {
-    return isCons(xs) ? conj(g(xs.head), everygStep(g, xs.tail, state)) : succeedg;
+    return isCons(xs) ? conj(g(xs.head), everygStep(g, xs.tail)) : succeedg;
+  }(g, xs)(state);
+};
+const someg = (g, xs) => state => {
+  xs = walk(xs, state.map);
+  return function somegStep(g, xs) {
+    return isCons(xs) ? disj(g(xs.head), somegStep(g, xs.tail, state)) : failg;
   }(g, xs)(state);
 };
 const predo = (x, y) => equiv(x, new Succ(y));
