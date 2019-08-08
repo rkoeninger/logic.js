@@ -395,11 +395,11 @@ const addo = (x, y, z) =>
   conde(
     [zeroo(x), equiv(y, z)],
     [zeroo(y), equiv(x, z)],
-    [fresh((xp, ys) =>
+    [fresh((xp, zp) =>
       conjs(
         predo(x, xp),
-        succo(y, ys),
-        addo(xp, ys, z)))]);
+        predo(z, zp),
+        addo(xp, y, zp)))]);
 const mulo = (x, y, z) =>
   conde(
     [zeroo(x), zeroo(z)],
