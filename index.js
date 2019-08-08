@@ -362,8 +362,8 @@ const nub = xs => {
   return ys;
 };
 const successful = x => ({ success: true, results: isArray(x) ? x : [x] });
-const tautology = { success: true, results: null };
-const contradiction = { success: false, results: null };
+const tautology = { success: true, results: [] };
+const contradiction = { success: false, results: [] };
 const runResolve = f => {
   const params = paramsOf(f);
   const maps = nub(runAll(fresh(f)).map(m => resolveVars(params.map((n, i) => new LVar(i, n)), m)));
@@ -479,15 +479,15 @@ const oneThruNineo = xs => everyg(x => membero(x, xs), list(...range(9).map(x =>
 let testsPassed = 0;
 let testsFailed = 0;
 const test = (name, f, exptected) => {
-  const results = runResolve(f);
-  if (eq(exptected, results)) {
+  const actual = runResolve(f);
+  if (exptected.success === actual.success && sameElements(exptected.results, actual.results)) {
     testsPassed++;
   } else {
     console.error(name);
     console.log('expected: ');
     console.log(exptected);
-    console.log('results: ');
-    console.log(results);
+    console.log('actual: ');
+    console.log(actual);
     testsFailed++;
   }
 };
@@ -609,6 +609,27 @@ test('appendo tautology',
 test('appendo explicit contradiction',
   () => appendo(list(1, 2), list(8, 9), list(1, 2, 3, 4)),
   contradiction);
+test('appendo ignore list length',
+  () => appendo(list(_, _, _), list(_, _), list(_, _, _, _, _)),
+  tautology);
+test('appendo ignore all',
+  () => appendo(_, _, _),
+  tautology);
+test('appendo check prefix',
+  () => appendo(list(1, 2), _, list(1, 2, 3, 4)),
+  tautology);
+test('appendo check suffix',
+  () => appendo(_, list(3, 4), list(1, 2, 3, 4)),
+  tautology);
+test('appendo cross-infer',
+  (x, y, z, w, v) => appendo(list(1, x, 3), list(y, 5, 6, z), list(1, 2, w, 4, v, 6, 7)),
+  successful({ 'x#0': 2, 'y#1': 4, 'z#2': 7, 'w#3': 3, 'v#4': 5 }));
+test('appendo split every way',
+  (x, y) => appendo(x, y, list(1, 2)),
+  successful([
+    { 'x#0': list(),     'y#1': list(1, 2) },
+    { 'x#0': list(1),    'y#1': list(2) },
+    { 'x#0': list(1, 2), 'y#1': list() }]));
 
 if (testsFailed === 0) {
   console.log(`${testsPassed} tests passed`);
