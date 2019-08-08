@@ -176,7 +176,10 @@ const range = max => {
 const show = x =>
   x === null ? 'null' :
   x === undefined ? 'undefined' :
+  typeof x === 'symbol' ? `Symbol(${Symbol.keyFor(x)})` :
   x.toString();
+const isObject = x => x && x.constructor === Object;
+const sameElements = (xs, ys) => xs.length === ys.length && xs.every(x => ys.some(y => eq(x, y)));
 const eq = (x, y) =>
   !isIgnore(x) && !isIgnore(y) && (
     x === y ||
@@ -184,7 +187,8 @@ const eq = (x, y) =>
     isPeano(x) && isPeano(y) && Peano.eq(x, y) ||
     isCons(x) && isCons(y) && eq(x.head, y.head) && eq(x.tail, y.tail) ||
     isArray(x) && isArray(y) && x.length === y.length && x.every((xi, i) => eq(xi, y[i])) ||
-    isHash(x) && isHash(y) && Hash.eq(x, y));
+    isHash(x) && isHash(y) && Hash.eq(x, y)) ||
+    isObject(x) && isObject(y) && sameElements(Object.keys(x), Object.keys(y)) && Object.keys(x).every(k => eq(x[k], y[k]));
 const add = (map, key, value) => map ? map.set(key, value) : map;
 const walk = (x, map) => isLVar(x) && map && map.has(x) ? walk(map.get(x), map) : x;
 const unifyWalked = (x, y, map) =>
@@ -350,6 +354,26 @@ const nub = xs => {
   }
   return ys;
 };
+const successful = x => ({ success: true, results: isArray(x) ? x : [x] });
+const tautology = { success: true, results: null };
+const contradiction = { success: false, results: null };
+const runResolve = f => {
+  const params = paramsOf(f);
+  const maps = nub(runAll(fresh(f)).map(m => resolveVars(params.map((n, i) => new LVar(i, n)), m)));
+  if (maps && maps.length > 0) {
+    const kvss = maps
+      .map(m => m.entries.filter(([k, v]) => params.includes(k.name) && !isIgnore(v) && !isReified(v)))
+      .filter(kvs => kvs.length > 0);
+    if (kvss.length > 0) {
+      return {
+        success: true,
+        results: kvss.map(Object.fromEntries)
+      };
+    }
+    return tautology;
+  }
+  return contradiction;
+};
 const play = f => {
   const params = paramsOf(f);
   const maps = nub(runAll(fresh(f)).map(m => resolveVars(params.map((n, i) => new LVar(i, n)), m)));
@@ -369,8 +393,8 @@ const play = f => {
             names.add(k.name);
           }
           return kvs
-          .map(([k, v]) => (duplicateNames.has(k.name) ? k : k.name) + ' = ' + show(v))
-          .join(' | ')
+            .map(([k, v]) => (duplicateNames.has(k.name) ? k : k.name) + ' = ' + show(v))
+            .join(' | ')
         })
         .join('\n'));
     }
@@ -430,16 +454,85 @@ const ato = (xs, i, x) =>
         resto(xr, xs),
         predo(i, j),
         ato(xr, j, x)))]);
-const crossCuto = (xs, ys) =>
+const crossCuto = (rows, cols) =>
   everyg(i =>
-  everyg(j =>
-    fresh((x, y, xi, yj) =>
-      conjs(
-        ato(xi, i, xs),
-        ato(x, j, xi),
-        ato(yj, j, ys),
-        ato(y, i, yj),
-        equiv(x, y))),
-  list(...range(9).map(peano)),
-  list(...range(9).map(peano))));
+    everyg(j =>
+      fresh((x, row, col) =>
+        conjs(
+          ato(rows, i, row),
+          ato(row,  j, x),
+          ato(cols, j, col),
+          ato(col,  i, x))),
+      list(...range(9).map(peano))),
+    list(...range(9).map(peano)));
 const oneThruNineo = xs => everyg(x => membero(x, xs), list(...range(9).map(x => peano(x + 1))));
+
+
+
+let testsPassed = 0;
+let testsFailed = 0;
+const test = (name, f, exptected) => {
+  const results = runResolve(f);
+  if (eq(exptected, results)) {
+    testsPassed++;
+  } else {
+    console.error(name);
+    console.log('expected: ');
+    console.log(exptected);
+    console.log('results: ');
+    console.log(results);
+    testsFailed++;
+  }
+};
+
+test('conso tautology',
+  () => conso(1, list(2, 3), list(1, 2, 3)),
+  tautology);
+test('conso build whole from first and rest',
+  x => conso(1, list(2, 3), x),
+  successful({ 'x#0': list(1, 2, 3) }));
+test('conso pick first',
+  x => conso(x, list(2, 3), list(1, 2, 3)),
+  successful({ 'x#0': 1 }));
+test('conso pick first ignore rest elements and rest of whole',
+  x => conso(x, list(_, _), list(1, _, _)),
+  successful({ 'x#0': 1 }));
+test('conso pick first ignore rest',
+  x => conso(x, _, list(1, 2, 3)),
+  successful({ 'x#0': 1 }));
+test('conso pick first ignore rest and rest of whole',
+  x => conso(x, _, list(1, _, _)),
+  successful({ 'x#0': 1 }));
+test('conso pick rest',
+  x => conso(1, x, list(1, 2, 3)),
+  successful({ 'x#0': list(2, 3) }));
+test('conso pick rest ignore first',
+  x => conso(_, x, list(1, 2, 3)),
+  successful({ 'x#0': list(2, 3) }));
+test('conso pick rest ignore first and first in whole',
+  x => conso(_, x, list(_, 2, 3)),
+  successful({ 'x#0': list(2, 3) }));
+test('conso destructure whole',
+  (x, y) => conso(x, y, list(1, 2, 3)),
+  successful({ 'x#0': 1, 'y#1': list(2, 3) }));
+test('conso ignore all',
+  () => conso(_, _, _),
+  tautology);
+test('conso list lengths ignore elements',
+  () => conso(_, list(_, _), list(_, _, _)),
+  tautology);
+test('conso ignore whole',
+  () => conso(1, list(2, 3), _),
+  tautology);
+test('conso cross-infer',
+  (x, y, z) => conso(x, list(2, z), list(1, y, 3)),
+  successful({ 'x#0': 1, 'y#1': 2, 'z#2': 3 }));
+test('conso ignore first and rest, whole is non-list',
+  () => conso(_, _, 3),
+  contradiction);
+
+if (testsFailed === 0) {
+  console.log(`${testsPassed} tests passed`);
+} else {
+  console.error(`${testsPassed} tests passed, ${testsFailed} tests failed`);
+}
