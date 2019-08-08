@@ -396,6 +396,42 @@ const reverseo = (xs, ys) =>
         conso(xf, xr, xs),
         reverseo(xr, yl),
         appendo(yl, list(xf), ys)))]);
+const lengtho = (n, xs) =>
+  conde(
+    [zeroo(n), emptyo(xs)],
+    [fresh((m, xr) =>
+      conj(
+        predo(n, m),
+        resto(xr, xs),
+        lengtho(m, xr)))]);
+const rangeo = (x, xs) =>
+  conde(
+    [zeroo(x), emptyo(xs)],
+    [fresh((xp, xr) =>
+      conj(
+        predo(x, xp),
+        conso(x, xr, xs),
+        rangeo(xp, xr)))]);
+const ato = (xs, i, x) =>
+  conde(
+    [zeroo(i), firsto(x, xs)],
+    [fresh((xr, j) =>
+      conj(
+        resto(xr, xs),
+        predo(i, j),
+        ato(xr, j, x)))]);
+const crossCuto = (rows, cols) =>
+  everyg(i =>
+    everyg(j =>
+      fresh((x, row, col) =>
+        conj(
+          ato(rows, i, row),
+          ato(row,  j, x),
+          ato(cols, j, col),
+          ato(col,  i, x))),
+      list(...range(9).map(peano))),
+    list(...range(9).map(peano)));
+const oneThruNineo = xs => everyg(x => membero(x, xs), list(...range(9).map(x => peano(x + 1))));
 const succeedg = state => new Node(state.map ? state : withMap(state, new Hash()), null);
 const failg = state => null;
 const assertg = (...assertions) => s => new Node(new State(new Hash(assertions)), s);
@@ -434,34 +470,6 @@ const lto = (x, y) => fresh(diff => conj(addo(x, diff, y), gteo(diff, one)));
 //         predo(x, xp),
 //         mulo(xp, y, w),
 //         addo(y, w, z)))]);
-const rangeo = (x, xs) =>
-  conde(
-    [zeroo(x), emptyo(xs)],
-    [fresh((xp, xr) =>
-      conj(
-        predo(x, xp),
-        conso(x, xr, xs),
-        rangeo(xp, xr)))]);
-const ato = (xs, i, x) =>
-  conde(
-    [zeroo(i), firsto(x, xs)],
-    [fresh((xr, j) =>
-      conj(
-        resto(xr, xs),
-        predo(i, j),
-        ato(xr, j, x)))]);
-const crossCuto = (rows, cols) =>
-  everyg(i =>
-    everyg(j =>
-      fresh((x, row, col) =>
-        conj(
-          ato(rows, i, row),
-          ato(row,  j, x),
-          ato(cols, j, col),
-          ato(col,  i, x))),
-      list(...range(9).map(peano))),
-    list(...range(9).map(peano)));
-const oneThruNineo = xs => everyg(x => membero(x, xs), list(...range(9).map(x => peano(x + 1))));
 
 // TODO: predicates like is_numbero/1, is_listo/1, etc...
 // TODO: negation like noto/1
