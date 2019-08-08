@@ -286,6 +286,9 @@ test('ato infer index not found',
 test('ato access index out of bounds',
   x => ato(list(1, 2, 3, 4), seven, x),
   contradiction);
+// TODO: fresh(xs => conj(ato(xs, zero, 1), ato(xs, one, 2), ato(xs, two, 3)))
+//       should return
+//       xs = [1 2 3 | _]
 test('everyg tautology',
   () => everyg(x => gteo(x, one), list(one, two, three)),
   tautology);
