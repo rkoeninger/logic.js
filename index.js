@@ -374,7 +374,7 @@ const runResolve = f => {
     if (kvss.length > 0) {
       return {
         success: true,
-        results: kvss.map(Object.fromEntries)
+        results: kvss.map(kvs => Object.fromEntries(kvs.map(([k, v]) => [k.name, v])))
       };
     }
     return tautology;
@@ -497,31 +497,31 @@ test('conso tautology',
   tautology);
 test('conso build whole from first and rest',
   x => conso(1, list(2, 3), x),
-  successful({ 'x#0': list(1, 2, 3) }));
+  successful({ x: list(1, 2, 3) }));
 test('conso pick first',
   x => conso(x, list(2, 3), list(1, 2, 3)),
-  successful({ 'x#0': 1 }));
+  successful({ x: 1 }));
 test('conso pick first ignore rest elements and rest of whole',
   x => conso(x, list(_, _), list(1, _, _)),
-  successful({ 'x#0': 1 }));
+  successful({ x: 1 }));
 test('conso pick first ignore rest',
   x => conso(x, _, list(1, 2, 3)),
-  successful({ 'x#0': 1 }));
+  successful({ x: 1 }));
 test('conso pick first ignore rest and rest of whole',
   x => conso(x, _, list(1, _, _)),
-  successful({ 'x#0': 1 }));
+  successful({ x: 1 }));
 test('conso pick rest',
   x => conso(1, x, list(1, 2, 3)),
-  successful({ 'x#0': list(2, 3) }));
+  successful({ x: list(2, 3) }));
 test('conso pick rest ignore first',
   x => conso(_, x, list(1, 2, 3)),
-  successful({ 'x#0': list(2, 3) }));
+  successful({ x: list(2, 3) }));
 test('conso pick rest ignore first and first in whole',
   x => conso(_, x, list(_, 2, 3)),
-  successful({ 'x#0': list(2, 3) }));
+  successful({ x: list(2, 3) }));
 test('conso destructure whole',
   (x, y) => conso(x, y, list(1, 2, 3)),
-  successful({ 'x#0': 1, 'y#1': list(2, 3) }));
+  successful({ x: 1, y: list(2, 3) }));
 test('conso ignore all',
   () => conso(_, _, _),
   tautology);
@@ -533,7 +533,7 @@ test('conso ignore whole',
   tautology);
 test('conso cross-infer',
   (x, y, z) => conso(x, list(2, z), list(1, y, 3)),
-  successful({ 'x#0': 1, 'y#1': 2, 'z#2': 3 }));
+  successful({ x: 1, y: 2, z: 3 }));
 test('conso ignore first and rest, whole is non-list',
   () => conso(_, _, 3),
   contradiction);
@@ -572,13 +572,13 @@ test('firsto tautology first and first of whole',
   tautology);
 test('firsto infer first',
   x => firsto(x, list(1, 2, 3)),
-  successful({ 'x#0': 1 }));
+  successful({ x: 1 }));
 test('firsto infer first ignore rest values',
   x => firsto(x, list(1, _, _)),
-  successful({ 'x#0': 1 }));
+  successful({ x: 1 }));
 test('firsto infer first of whole',
   x => firsto(1, list(x, 2, 3)),
-  successful({ 'x#0': 1 }));
+  successful({ x: 1 }));
 test('resto tautology',
   () => resto(list(2, 3), list(1, 2, 3)),
   tautology);
@@ -596,13 +596,13 @@ test('resto tautology rest and rest of whole',
   tautology);
 test('resto infer rest',
   x => resto(x, list(1, 2, 3)),
-  successful({ 'x#0': list(2, 3) }));
+  successful({ x: list(2, 3) }));
 test('resto infer rest ignore first',
   x => resto(x, list(_, 2, 3)),
-  successful({ 'x#0': list(2, 3) }));
+  successful({ x: list(2, 3) }));
 test('resto infer rest of whole',
   x => resto(list(2, 3), new Cons(1, x)),
-  successful({ 'x#0': list(2, 3) }));
+  successful({ x: list(2, 3) }));
 test('appendo tautology',
   () => appendo(list(1, 2), list(3, 4), list(1, 2, 3, 4)),
   tautology);
@@ -623,13 +623,13 @@ test('appendo check suffix',
   tautology);
 test('appendo cross-infer',
   (x, y, z, w, v) => appendo(list(1, x, 3), list(y, 5, 6, z), list(1, 2, w, 4, v, 6, 7)),
-  successful({ 'x#0': 2, 'y#1': 4, 'z#2': 7, 'w#3': 3, 'v#4': 5 }));
+  successful({ x: 2, y: 4, z: 7, w: 3, v: 5 }));
 test('appendo split every way',
   (x, y) => appendo(x, y, list(1, 2)),
   successful([
-    { 'x#0': list(),     'y#1': list(1, 2) },
-    { 'x#0': list(1),    'y#1': list(2) },
-    { 'x#0': list(1, 2), 'y#1': list() }]));
+    { x: list(),     y: list(1, 2) },
+    { x: list(1),    y: list(2) },
+    { x: list(1, 2), y: list() }]));
 
 if (testsFailed === 0) {
   console.log(`${testsPassed} tests passed`);
