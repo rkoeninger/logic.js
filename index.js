@@ -129,6 +129,17 @@ const Peano = class {
   }
 };
 
+const zero = new Zero();
+const one = zero.succ;
+const two = one.succ;
+const three = two.succ;
+const four = three.succ;
+const five = four.succ;
+const six = five.succ;
+const seven = six.succ;
+const eight = seven.succ;
+const nine = eight.succ;
+const peano = n => n === 0 ? zero : new Succ(peano(n - 1));
 const _ = new LVar(-1, '_');
 const isIgnore = x => isLVar(x) && x.id === -1 && x.name === '_';
 const isReified = x => x instanceof Reified;
@@ -239,9 +250,6 @@ const seqToArray = (n, s) => {
   }
   return result;
 };
-
-// in Clojure, lazy-seq eval's expressions when the first one is requested and then caches the results
-
 const equiv = (u, v) => state => {
   const newMap = unify(u, v, state.map);
   // TODO: check if the map is unchanged?
@@ -269,85 +277,11 @@ const resolveVars = (vars, map) => new Hash(vars.map(v => {
   return [v, deepWalk(v2, reify(v2, new Hash()))];
 }));
 const delayGoal = goal => state => () => goal(state);
-const disj = (...goals) => {
-  switch (goals.length) {
-    case 0: return failg;
-    case 1: return goals[0];
-    case 2:
-      const g0 = goals[0];
-      const g1 = goals[1];
-      return state =>
-        mergeStreams(
-          isFunction(g0) ? g0(state) : new Node(state),
-          isFunction(g1) ? g1(state) : new Node(state));
-  }
-  let result = delayGoal(goals[0]);
-  for (let i = 1; i < goals.length; ++i) {
-    result = disj(result, delayGoal(goals[i]));
-  }
-  return result;
-};
-const conj = (...goals) => {
-  switch (goals.length) {
-    case 0: return succeedg;
-    case 1: goals[0];
-    case 2:
-      const g0 = goals[0];
-      const g1 = goals[1];
-      return state =>
-        isFunction(g0) ? flatMapStream(g0(state), g1) :
-        isFunction(g1) ? flatMapStream(g1(state), g0) :
-        new Node(state);
-  }
-  let result = delayGoal(goals[0]);
-  for (let i = 1; i < goals.length; ++i) {
-    result = conj(result, delayGoal(goals[i]));
-  }
-  return result;
-};
 const fresh = f => state => {
   const args = paramsOf(f);
   const arity = args.length;
   const vars = range(arity).map(n => new LVar(state.nextId + n, args[n]));
   return f(...vars)(incNextId(state, arity));
-};
-const conde = (...clauses) => disj(...clauses.map(c => conj(...c)));
-const conso = (first, rest, out) => equiv(new Cons(first, rest), out);
-const firsto = (first, out) => fresh(rest => conso(first, rest, out));
-const resto = (rest, out) => fresh(first => conso(first, rest, out));
-const emptyo = s => equiv(null, s);
-const appendo = (xs, ys, zs) =>
-  conde(
-    [emptyo(xs), equiv(ys, zs)],
-    [emptyo(ys), equiv(xs, zs)],
-    [fresh((f, xr, zr) =>
-      conj(
-        conso(f, xr, xs),
-        conso(f, zr, zs),
-        appendo(xr, ys, zr)))]);
-const membero = (x, xs) =>
-  conde(
-    [firsto(x, xs)],
-    [fresh(ys =>
-      conj(
-        resto(ys, xs),
-        membero(x, ys)))]);
-const reverseo = (xs, ys) =>
-  conde(
-    [emptyo(xs), emptyo(ys)],
-    [fresh((xf, xr, yl) =>
-      conj(
-        conso(xf, xr, xs),
-        reverseo(xr, yl),
-        appendo(yl, list(xf), ys)))]);
-const succeedg = state => new Node(state.map ? state : withMap(state, new Hash()), null);
-const failg = state => null;
-const assertg = (...assertions) => s => new Node(new State(new Hash(assertions)), s);
-const everyg = (g, xs) => state => {
-  xs = walk(xs, state.map);
-  return function everygStep(g, xs) {
-    return isCons(xs) ? conj(g(xs.head), everygStep(g, xs.tail, state)) : succeedg;
-  }(g, xs)(state);
 };
 const run = (n, g) => seqToArray(n, streamToSeq(g(new State()))).map(x => x.map);
 const runAll = g => run(32, g);
@@ -394,17 +328,80 @@ const play = f => {
   return actual.success;
 };
 
-const zero = new Zero();
-const one = zero.succ;
-const two = one.succ;
-const three = two.succ;
-const four = three.succ;
-const five = four.succ;
-const six = five.succ;
-const seven = six.succ;
-const eight = seven.succ;
-const nine = eight.succ;
-const peano = n => n === 0 ? zero : new Succ(peano(n - 1));
+const disj = (...goals) => {
+  switch (goals.length) {
+    case 0: return failg;
+    case 1: return goals[0];
+    case 2:
+      const g0 = goals[0];
+      const g1 = goals[1];
+      return state =>
+        mergeStreams(
+          isFunction(g0) ? g0(state) : new Node(state),
+          isFunction(g1) ? g1(state) : new Node(state));
+  }
+  let result = delayGoal(goals[0]);
+  for (let i = 1; i < goals.length; ++i) {
+    result = disj(result, delayGoal(goals[i]));
+  }
+  return result;
+};
+const conj = (...goals) => {
+  switch (goals.length) {
+    case 0: return succeedg;
+    case 1: goals[0];
+    case 2:
+      const g0 = goals[0];
+      const g1 = goals[1];
+      return state =>
+        isFunction(g0) ? flatMapStream(g0(state), g1) :
+        isFunction(g1) ? flatMapStream(g1(state), g0) :
+        new Node(state);
+  }
+  let result = delayGoal(goals[0]);
+  for (let i = 1; i < goals.length; ++i) {
+    result = conj(result, delayGoal(goals[i]));
+  }
+  return result;
+};
+const conde = (...clauses) => disj(...clauses.map(c => conj(...c)));
+const conso = (first, rest, out) => equiv(new Cons(first, rest), out);
+const firsto = (first, out) => fresh(rest => conso(first, rest, out));
+const resto = (rest, out) => fresh(first => conso(first, rest, out));
+const emptyo = s => equiv(null, s);
+const appendo = (xs, ys, zs) =>
+  conde(
+    [emptyo(xs), equiv(ys, zs)],
+    [emptyo(ys), equiv(xs, zs)],
+    [fresh((f, xr, zr) =>
+      conj(
+        conso(f, xr, xs),
+        conso(f, zr, zs),
+        appendo(xr, ys, zr)))]);
+const membero = (x, xs) =>
+  conde(
+    [firsto(x, xs)],
+    [fresh(ys =>
+      conj(
+        resto(ys, xs),
+        membero(x, ys)))]);
+const reverseo = (xs, ys) =>
+  conde(
+    [emptyo(xs), emptyo(ys)],
+    [fresh((xf, xr, yl) =>
+      conj(
+        conso(xf, xr, xs),
+        reverseo(xr, yl),
+        appendo(yl, list(xf), ys)))]);
+const succeedg = state => new Node(state.map ? state : withMap(state, new Hash()), null);
+const failg = state => null;
+const assertg = (...assertions) => s => new Node(new State(new Hash(assertions)), s);
+const everyg = (g, xs) => state => {
+  xs = walk(xs, state.map);
+  return function everygStep(g, xs) {
+    return isCons(xs) ? conj(g(xs.head), everygStep(g, xs.tail, state)) : succeedg;
+  }(g, xs)(state);
+};
 const predo = (x, y) => equiv(x, new Succ(y));
 const succo = (x, y) => equiv(new Succ(x), y);
 const zeroo = x => equiv(x, zero);
