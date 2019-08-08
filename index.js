@@ -382,32 +382,16 @@ const runResolve = f => {
   return contradiction;
 };
 const play = f => {
-  const params = paramsOf(f);
-  const maps = nub(runAll(fresh(f)).map(m => resolveVars(params.map((n, i) => new LVar(i, n)), m)));
-  if (maps && maps.length > 0) {
-    const kvss = maps
-      .map(m => m.entries.filter(([k, v]) => params.includes(k.name) && !isIgnore(v) && !isReified(v)))
-      .filter(kvs => kvs.length > 0);
-    if (kvss.length > 0) {
-      console.log(kvss
-        .map(kvs => {
-          const names = new Set();
-          const duplicateNames = new Set();
-          for (const [k, _] of kvs) {
-            if (names.has(k.name)) {
-              duplicateNames.add(k.name);
-            }
-            names.add(k.name);
-          }
-          return kvs
-            .map(([k, v]) => (duplicateNames.has(k.name) ? k : k.name) + ' = ' + show(v))
-            .join(' | ')
-        })
-        .join('\n'));
-    }
-    return true;
+  const actual = runResolve(f);
+  if (actual.success && actual.results.length > 0) {
+    console.log(actual.results
+      .map(r =>
+        Object.entries(r)
+          .map(([k, v]) => k + ' = ' + show(v))
+          .join(' | '))
+      .join('\n'));
   }
-  return false;
+  return actual.success;
 };
 
 const zero = new Zero();
