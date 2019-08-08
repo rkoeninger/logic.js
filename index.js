@@ -620,6 +620,45 @@ test('appendo split every way',
     { x: list(),     y: list(1, 2) },
     { x: list(1),    y: list(2) },
     { x: list(1, 2), y: list() }]));
+test('reverseo tautology',
+  () => reverseo(list(1, 2, 3), list(3, 2, 1)),
+  tautology);
+test('reverseo tautology empty lists',
+  () => reverseo(list(), list()),
+  tautology);
+test('reverseo contradiction',
+  () => reverseo(list(5, 7, 8), list(3, 2, 1)),
+  contradiction);
+test('reverseo tautology ignore values',
+  () => reverseo(list(_, _, _), list(_, _, _)),
+  tautology);
+test('reverseo contradiction ignore values different list lengths',
+  () => reverseo(list(_, _, _), list(_, _, _, _)),
+  contradiction);
+test('reverseo cross-infer',
+  (x, y, z) => reverseo(list(x, 2, z), list(3, y, 1)),
+  successful({ x: 1, y: 2, z: 3 }));
+test('membero tautology',
+  () => membero(1, list(1, 2, 3)),
+  tautology);
+test('membero explicit contradiction',
+  () => membero(6, list(1, 2, 3)),
+  contradiction);
+test('membero iterate values',
+  x => membero(x, list(1, 2, 3)),
+  successful([
+    { x: 1 },
+    { x: 2 },
+    { x: 3 }]));
+test('membero single value against all variable list',
+  (x, y, z) => membero(1, list(x, y, z)),
+  successful([
+    { x: 1 },
+    { y: 1 },
+    { z: 1 }]));
+test('membero infer single value in list',
+  x => membero(2, list(1, x, 3)),
+  successful({ x: 2 }));
 
 if (testsFailed === 0) {
   console.log(`${testsPassed} tests passed`);
