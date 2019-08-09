@@ -373,6 +373,7 @@ const firsto = (first, out) => fresh(rest => conso(first, rest, out));
 const resto = (rest, out) => fresh(first => conso(first, rest, out));
 const singleo = (x, xs) => cons(x, null, xs);
 const emptyo = s => equiv(null, s);
+const nonemptyo = x => conso(_, _, x);
 const appendo = (xs, ys, zs) =>
   conde(
     [emptyo(xs), equiv(ys, zs)],
@@ -452,9 +453,16 @@ const everyg = (g, xs) => state => {
 const someg = (g, xs) => state => {
   xs = walk(xs, state.map);
   return function somegStep(g, xs) {
-    return isCons(xs) ? disj(g(xs.head), somegStep(g, xs.tail, state)) : failg;
+    return isCons(xs) ? disj(g(xs.head), somegStep(g, xs.tail)) : failg;
   }(g, xs)(state);
 };
+const overlapo = (xs, ys) =>
+  fresh((x, xr) =>
+    conj(
+      conso(x, xr, xs),
+      disj(
+        membero(x, ys),
+        overlapo(xr, ys))));
 const predo = (x, y) => equiv(x, new Succ(y));
 const succo = (x, y) => equiv(new Succ(x), y);
 const zeroo = x => equiv(x, zero);
