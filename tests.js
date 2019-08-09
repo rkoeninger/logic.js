@@ -13,7 +13,7 @@ const test = (name, f, exptected) => {
     testsFailed++;
   }
 };
-
+const startTime = new Date().getTime();
 test('conso tautology',
   () => conso(1, list(2, 3), list(1, 2, 3)),
   tautology);
@@ -335,9 +335,9 @@ test('everyg-someg tautology',
 test('someg-everyg tautology',
   () => someg(xs => everyg(y => gteo(y, five), xs), list(list(three, six), list(seven, five, nine), list(two))),
   tautology);
-
+const endTime = new Date().getTime();
 if (testsFailed === 0) {
-  console.log(`${testsPassed} tests passed`);
+  console.log(`${testsPassed} tests passed in ${endTime - startTime}ms`);
 } else {
   console.error(`${testsPassed} tests passed, ${testsFailed} tests failed`);
 }
