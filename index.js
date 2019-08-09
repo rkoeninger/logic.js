@@ -371,6 +371,7 @@ const conde = (...clauses) => disj(...clauses.map(c => conj(...c)));
 const conso = (first, rest, out) => equiv(new Cons(first, rest), out);
 const firsto = (first, out) => fresh(rest => conso(first, rest, out));
 const resto = (rest, out) => fresh(first => conso(first, rest, out));
+const singleo = (x, xs) => cons(x, null, xs);
 const emptyo = s => equiv(null, s);
 const appendo = (xs, ys, zs) =>
   conde(
@@ -381,6 +382,13 @@ const appendo = (xs, ys, zs) =>
         conso(f, xr, xs),
         conso(f, zr, zs),
         appendo(xr, ys, zr)))]);
+const rotateo = (xs, ys) =>
+  conde(
+    [emptyo(xs), emptyo(ys)],
+    [fresh((x, xr) =>
+      conj(
+        conso(x, xr, xs),
+        appendo(xr, list(x), ys)))]);
 const membero = (x, xs) =>
   conde(
     [firsto(x, xs)],
