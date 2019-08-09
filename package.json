@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/rkoeninger/logic.js/issues"
   },
-  "homepage": "https://github.com/rkoeninger/logic.js#readme"
+  "homepage": "https://github.com/rkoeninger/logic.js#readme",
+  "dependencies": {
+    "acorn": "^6.2.1"
+  }
 }
