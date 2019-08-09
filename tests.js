@@ -176,6 +176,9 @@ test('reverseo contradiction ignore values different list lengths',
 test('reverseo cross-infer',
   (x, y, z) => reverseo(list(x, 2, z), list(3, y, 1)),
   successful({ x: 1, y: 2, z: 3 }));
+test('rotateo reversal',
+  (xs, ys) => conj(rotateo(list(1, 2, 3), xs), rotateo(ys, xs)),
+  successful({ xs: list(2, 3, 1), ys: list(1, 2, 3) }));
 test('membero tautology',
   () => membero(1, list(1, 2, 3)),
   tautology);
