@@ -641,6 +641,13 @@ const miniku = rows =>
       transposeo(rows, cols),
       everyg(oneThruThreeo, rows),
       everyg(oneThruThreeo, cols)));
+const oneThruNg = n => xs => everyg(x => membero(x, xs), list(...range(n).map(x => x + 1)));
+const varkug = n => rows =>
+  fresh(cols =>
+    conj(
+      transposeo(rows, cols),
+      everyg(oneThruNg(n), rows),
+      everyg(oneThruNg(n), cols)));
 /*
 play(rows => fresh((a, b, c, d, e, f, g, h, i) =>
   conj(
