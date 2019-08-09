@@ -429,18 +429,125 @@ const ato = (xs, i, x) =>
         resto(xr, xs),
         predo(i, j),
         ato(xr, j, x)))]);
+const squareo = xss =>
+  fresh((xs, n) =>
+    conj(
+      lengtho(n, xss),
+      everyg(xs => lengtho(n, xs), xss)));
+const firstso = (xss, ys) =>
+  conde(
+    [emptyo(xss), emptyo(ys)],
+    [fresh((x, xs, xrs, yr) =>
+      conj(
+        conso(xs, xrs, xss),
+        firsto(x, xs),
+        conso(x, yr, ys),
+        firstso(xrs, yr)))]);
+const atso = (i, xss, ys) =>
+  conde(
+    [emptyo(xss), emptyo(ys)],
+    [fresh((x, xs, xrs, yr) =>
+      conj(
+        conso(xs, xrs, xss),
+        ato(xs, i, x),
+        conso(x, yr, ys),
+        atso(i, xrs, yr)))]);
+const ato2d = (xss, i, j, x) =>
+  fresh(xs =>
+    conj(
+      ato(xss, i, xs),
+      ato(xs, j, x)));
+const crossCuto3o = (rows, cols) =>
+  fresh((col0, col1, col2) =>
+    conj(
+      lengtho(three, rows),
+      equiv(cols, list(col0, col1, col2)),
+      atso(zero, rows, col0),
+      atso(one, rows, col1),
+      atso(two, rows, col2)));
+const crossCuto9o = (rows, cols) =>
+  fresh((col0, col1, col2, col3, col4, col5, col6, col7, col8) =>
+    conj(
+      lengtho(nine, rows),
+      equiv(cols, list(col0, col1, col2, col3, col4, col5, col6, col7, col8)),
+      atso(zero, rows, col0),
+      atso(one, rows, col1),
+      atso(two, rows, col2),
+      atso(three, rows, col3),
+      atso(four, rows, col4),
+      atso(five, rows, col5),
+      atso(six, rows, col6),
+      atso(seven, rows, col7),
+      atso(eight, rows, col8)));
+const transposeo = (rows, cols) =>
+  conde(
+    [emptyo(rows), emptyo(cols)],
+    [fresh(r =>
+      conj(
+        firsto(r, rows),
+        _transposeo_3(r, rows, cols)))]);
+const _transposeo_3 = (rows, middles, cols) =>
+  conde(
+    [emptyo(rows), emptyo(cols)],
+    [fresh((rr, fc, rc, mo) =>
+      conj(
+        resto(rr, rows),
+        conso(fc, rc, cols),
+        _lists_firsts_rests(middles, fc, mo),
+        _transposeo_3(rr, mo, rc)))]);
+const _lists_firsts_rests = (xs, ys, zs) =>
+  conde(
+    [emptyo(xs), emptyo(ys), emptyo(zs)],
+    [fresh((fos, f, os, rest, fs, oss) =>
+      conj(
+        conso(fos, rest, xs),
+        conso(f, os, fos),
+        conso(f, fs, ys),
+        conso(os, oss, zs),
+        _lists_firsts_rests(rest, fs, oss)))]);
+const blockso = (rows, blocks) =>
+  fresh((r0, r1, r2, r3, r4, r5, r6, r7, r8, b0, b1, b2, b01) =>
+    conj(
+      equiv(rows, list(r0, r1, r2, r3, r4, r5, r6, r7, r8)),
+      blockso_help(r0, r1, r2, b0),
+      blockso_help(r3, r4, r5, b1),
+      blockso_help(r6, r7, r8, b2),
+      appendo(b0, b1, b01),
+      appendo(b01, b2, blocks)));
+const blockso_help = (xs, ys, zs, bs) =>
+  conde(
+    [emptyo(xs), emptyo(ys), emptyo(zs), emptyo(bs)],
+    [fresh((x0, x1, x2, xr,
+            y0, y1, y2, yr,
+            z0, z1, z2, zr,
+            br) =>
+      conj(
+        appendo(list(x0, x1, x2), xr, xs),
+        appendo(list(y0, y1, y2), yr, ys),
+        appendo(list(z0, z1, z2), zr, zs),
+        conso(list(x0, x1, x2, y0, y1, y2, z0, z1, z2), br, bs),
+        blockso_help(xr, yr, zr, br)))]);
+grid9 = list(...[0,0,0,0,0,0,0,0,0].map(y => list(...range(9).map(x => x + 1)))) // TODO: remove
+grid99 = list(...[range(9).map(x => x + 1), range(9).map(x => x + 10), range(9).map(x => x + 19), range(9).map(x => x + 28), range(9).map(x => x + 37), range(9).map(x => x + 46), range(9).map(x => x + 55), range(9).map(x => x + 64), range(9).map(x => x + 73)].map(xs => list(...xs)))
 const crossCuto = (rows, cols) =>
-  everyg(i =>
-    everyg(j =>
-      fresh((x, row, col) =>
-        conj(
-          ato(rows, i, row),
-          ato(row,  j, x),
-          ato(cols, j, col),
-          ato(col,  i, x))),
-      list(...range(9).map(peano))),
-    list(...range(9).map(peano)));
-const oneThruNineo = xs => everyg(x => membero(x, xs), list(...range(9).map(x => peano(x + 1))));
+  fresh((n, is, js) =>
+    conj(
+      lengtho(n, rows),
+      lengtho(n, cols),
+      rangeo(n, is),
+      rangeo(n, js),
+      everyg(i => everyg(j => fresh(x => conj(ato2d(rows, i, j, x), ato2d(cols, j, i, x))), js), is)));
+// const crossCuto = (rows, cols) => crossCuto_recur(zero, rows, cols);
+// const crossCuto_recur = (i, rows, cols) =>
+//   conde(
+//     [emptyo(rows), emptyo(cols)],
+//     [fresh((j, col, restCols) =>
+//       conj(
+//         atso(i, rows, col),
+//         conso(col, restCols, cols),
+//         succo(i, j),
+//         crossCuto_recur(j, rows, restCols)))]);
+const oneThruNineo = xs => everyg(x => membero(x, xs), list(...range(9).map(x => 1)));
 const succeedg = state => new Node(state.map ? state : withMap(state, new Hash()), null);
 const failg = state => null;
 const assertg = (...assertions) => s => new Node(new State(new Hash(assertions)), s);
@@ -495,3 +602,57 @@ const lto = (x, y) => fresh(diff => conj(addo(x, diff, y), gteo(diff, one)));
 
 // TODO: predicates like is_numbero/1, is_listo/1, etc...
 // TODO: negation like noto/1
+
+/*
+%% sudoku.pl
+:- use_module(library(clpfd)).
+
+sudoku(Puzzle) :-
+    flatten(Puzzle, Tmp), Tmp ins 1..9,
+    Rows = Puzzle,
+    transpose(Rows, Columns),
+    blocks(Rows, Blocks),
+    maplist(all_distinct, Rows),
+    maplist(all_distinct, Columns),
+    maplist(all_distinct, Blocks),
+    maplist(label, Rows).
+
+blocks([A,B,C,D,E,F,G,H,I], Blocks) :-
+    blocks(A,B,C,Block1), blocks(D,E,F,Block2), blocks(G,H,I,Block3),
+    append([Block1, Block2, Block3], Blocks).
+
+blocks([], [], [], []).
+blocks([A,B,C|Bs1],[D,E,F|Bs2],[G,H,I|Bs3], [Block|Blocks]) :-
+    Block = [A,B,C,D,E,F,G,H,I],
+    blocks(Bs1, Bs2, Bs3, Blocks).
+ */
+const sudoku = rows =>
+  fresh((cols, boxes) =>
+    conj(
+      transposeo(rows, cols),
+      blockso(rows, boxes),
+      everyg(oneThruNineo, rows),
+      everyg(oneThruNineo, cols),
+      everyg(oneThruNineo, boxes)));
+const oneThruThreeo = xs => everyg(x => membero(x, xs), list(1, 2, 3));
+const miniku = rows =>
+  fresh(cols =>
+    conj(
+      transposeo(rows, cols),
+      everyg(oneThruThreeo, rows),
+      everyg(oneThruThreeo, cols)));
+/*
+play(rows => fresh((a, b, c, d, e, f, g, h, i) =>
+  conj(
+    equiv(rows, list(a, b, c, d, e, f, g, h, i)),
+    equiv(a, list(8, 2, 7, 1, 5, 4, 3, 9, 6)),
+    equiv(b, list(9, 6, 5, 3, 2, 7, 1, 4, 8)),
+    equiv(c, list(3, 4, 1, 6, 8, 9, 7, 5, 2)),
+    equiv(d, list(5, 9, 3, 4, 6, 8, 2, 7, 1)),
+    equiv(e, list(4, 7, 2, 5, 1, 3, 6, 8, 9)),
+    equiv(f, list(6, 1, 8, 9, 7, 2, 4, 3, 5)),
+    equiv(g, list(7, 8, 6, 2, 3, 5, 9, 1, 4)),
+    equiv(h, list(1, 5, 4, 7, 9, 6, 8, 2, 3)),
+    equiv(i, list(2, 3, 9, 8, 4, 1, 5, 6, 7)),
+    sudoku(rows))))
+ */

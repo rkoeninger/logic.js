@@ -299,6 +299,19 @@ test('ato access index out of bounds',
 // TODO: fresh(xs => conj(ato(xs, zero, 1), ato(xs, one, 2), ato(xs, two, 3)))
 //       should return
 //       xs = [1 2 3 | _]
+test('transposeo tautology',
+  () => transposeo(
+    list(list(1, 2, 3), list(4, 5, 6)),
+    list(list(1, 4), list(2, 5), list(3, 6))),
+  tautology);
+test('transposeo forward',
+  xs => transposeo(list(list(1, 2, 3), list(4, 5, 6)), xs),
+  successful({ xs: list(list(1, 4), list(2, 5), list(3, 6)) }));
+// TODO: this just results in tautology, should do actual transpose
+//       transposeo should be idempotent
+// test('transposeo backward',
+//   xs => transposeo(xs, list(list(1, 4), list(2, 5), list(3, 6))),
+//   successful({ xs: list(list(1, 2, 3), list(4, 5, 6)) }));
 test('everyg tautology',
   () => everyg(x => gteo(x, one), list(one, two, three)),
   tautology);
@@ -325,7 +338,7 @@ test('everyg permutation construction',
     { ys: list(3, 2, 1) }]));
 test('everyg per index equality comparison',
   ys =>
-    fresh((xs, n, is) =>
+    fresh((xs, n) =>
       conj(
         equiv(xs, list(1, 2, 3)),
         lengtho(n, xs),
