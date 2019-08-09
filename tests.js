@@ -177,8 +177,8 @@ test('reverseo cross-infer',
   (x, y, z) => reverseo(list(x, 2, z), list(3, y, 1)),
   successful({ x: 1, y: 2, z: 3 }));
 test('rotateo reversal',
-  (xs, ys) => conj(rotateo(list(1, 2, 3), xs), rotateo(ys, xs)),
-  successful({ xs: list(2, 3, 1), ys: list(1, 2, 3) }));
+  xs => fresh(ys => conj(rotateo(list(1, 2, 3), ys), rotateo(xs, ys))),
+  successful({ xs: list(1, 2, 3) }));
 test('membero tautology',
   () => membero(1, list(1, 2, 3)),
   tautology);
@@ -227,7 +227,7 @@ test('addo impossible difference',
 test('addo all addends',
   (x, y) => addo(x, y, three),
   successful([
-    { x: zero, y: three },
+    { x: zero,  y: three },
     { x: one,   y: two },
     { x: two,   y: one },
     { x: three, y: zero }]));
@@ -249,6 +249,13 @@ test('lteo equality',
 test('lteo contradiction',
   () => lteo(three, one),
   contradiction);
+test('gteo-lteo range of values',
+  x => conj(gteo(x, two), lteo(x, five)),
+  successful([
+    { x: two },
+    { x: three },
+    { x: four },
+    { x: five }]));
 test('gto tautology',
   () => gto(five, two),
   tautology);
@@ -301,12 +308,33 @@ test('everyg tautology multiple conditions',
 test('everyg all but one hold',
   () => everyg(x => gteo(x, two), list(one, two, three)),
   contradiction);
+test('everyg permutation construction',
+  ys =>
+    fresh((xs, n) =>
+      conj(
+        equiv(xs, list(1, 2, 3)),
+        lengtho(n, xs),
+        lengtho(n, ys),
+        everyg(x => membero(x, ys), xs))),
+  successful([
+    { ys: list(1, 2, 3) },
+    { ys: list(1, 3, 2) },
+    { ys: list(2, 1, 3) },
+    { ys: list(3, 1, 2) },
+    { ys: list(2, 3, 1) },
+    { ys: list(3, 2, 1) }]));
 test('someg match one of multiple values',
   () => someg(x => equiv(x, 2), list(1, 2, 3)),
   tautology);
 test('someg fail to match one of multiple values',
   () => someg(x => equiv(x, 8), list(1, 2, 3)),
   contradiction);
+test('everyg-someg tautology',
+  () => everyg(xs => someg(y => gteo(y, six), xs), list(list(three, six), list(seven, five, nine), list(eight))),
+  tautology);
+test('someg-everyg tautology',
+  () => someg(xs => everyg(y => gteo(y, five), xs), list(list(three, six), list(seven, five, nine), list(two))),
+  tautology);
 
 if (testsFailed === 0) {
   console.log(`${testsPassed} tests passed`);
