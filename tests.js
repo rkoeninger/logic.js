@@ -323,6 +323,15 @@ test('everyg permutation construction',
     { ys: list(3, 1, 2) },
     { ys: list(2, 3, 1) },
     { ys: list(3, 2, 1) }]));
+test('everyg per index equality comparison',
+  ys =>
+    fresh((xs, n, is) =>
+      conj(
+        equiv(xs, list(1, 2, 3)),
+        lengtho(n, xs),
+        lengtho(n, ys),
+        everyg((x, i) => ato(ys, i, x), xs))),
+  successful({ ys: list(1, 2, 3) }));
 test('someg match one of multiple values',
   () => someg(x => equiv(x, 2), list(1, 2, 3)),
   tautology);
