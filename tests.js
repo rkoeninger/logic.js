@@ -176,6 +176,18 @@ test('reverseo contradiction ignore values different list lengths',
 test('reverseo cross-infer',
   (x, y, z) => reverseo(list(x, 2, z), list(3, y, 1)),
   successful({ x: 1, y: 2, z: 3 }));
+test('rotateo tautology left-to-right',
+  () => rotateo(list(1, 2, 3), list(2, 3, 1)),
+  tautology);
+test('rotateo tautology right-to-left',
+  () => rotateo(list(3, 1, 2), list(1, 2, 3)),
+  tautology);
+test('rotateo left-to-right infer new first',
+  x => rotateo(list(1, 2, 3), new Cons(x, _)),
+  successful({ x: 2 }));
+test('rotateo right-to-left infer new first',
+  x => rotateo(new Cons(x, _), list(1, 2, 3)),
+  successful({ x: 3 }));
 test('rotateo reversal',
   xs => fresh(ys => conj(rotateo(list(1, 2, 3), ys), rotateo(xs, ys))),
   successful({ xs: list(1, 2, 3) }));
