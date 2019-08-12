@@ -290,13 +290,45 @@ const resolveVars = (vars, map) => new Hash(vars.map(v => {
   const v2 = deepWalk(v, map);
   return [v, deepWalk(v2, reify(v2, new Hash()))];
 }));
-const delayGoal = goal => state => () => goal(state);
+const delayGoal = g => state => () => g(state);
 const fresh = f => state => {
   const args = paramsOf(f);
   const arity = args.length;
   const vars = range(arity).map(n => new LVar(state.nextId + n, args[n]));
   return f(...vars)(incNextId(state, arity));
 };
+const goal = g => Object.assign(g, { isGoal: true });
+const isGoal = x => x && x.isGoal;
+// const metagoal = mg => (...lvals) => {
+//   const prereqs = lvals.filter(x => x.isPartial).map(x => x.goal);
+//   const args = lvals.map(x => x.isPartial ? x.lval : x);
+//   return conj(...prereqs, delayGoal(mg)(...args));
+// };
+// const lengthom = metagoal((n, xs) =>
+//   conde(
+//     [zeroo(n), emptyo(xs)],
+//     [lengthom(predv(n), restv(xs))]));
+// const restv = xs => {
+//   const lval = genvar('y');
+//   return { lval, goal: resto(lval, xs), isPartial: true };
+// };
+// const predv = n => {
+//   const lval = genvar('rest');
+//   return { lval, goal: predo(n, lval), isPartial: true };
+// };
+// const genvar = name => new LVar(Math.random(), name);
+
+// Goal = List LVal -> Stream State
+// MetaGoal = List (LVal | Goal) -> Stream State
+// Generator = State -> Stream State
+// Composer = List Generator -> Generator
+// GoalConstructor = List (LVal | Goal) -> (Goal | MetaGoal)
+// predv :: LVal -> (LVar, Goal)
+// m :: LVar
+// predo :: (LVal, LVal) -> Generator
+// Partial = Goal (specialized)
+// predv :: LVal -> LVal -> Generator
+
 const run = (n, g) => seqToArray(n, streamToSeq(g(new State()))).map(x => x.map);
 const runAll = g => run(32, g);
 const paramsOf = fn => acorn.Parser.parseExpressionAt(fn.toString(), 0).params.map(p => p.name);
@@ -344,7 +376,7 @@ const play = f => {
 
 const disj = (...goals) => {
   switch (goals.length) {
-    case 0: return failg;
+    case 0: return fails;
     case 1: return goals[0];
     case 2:
       const g0 = goals[0];
@@ -362,7 +394,7 @@ const disj = (...goals) => {
 };
 const conj = (...goals) => {
   switch (goals.length) {
-    case 0: return succeedg;
+    case 0: return succeeds;
     case 1: goals[0];
     case 2:
       const g0 = goals[0];
@@ -379,13 +411,13 @@ const conj = (...goals) => {
   return result;
 };
 const conde = (...clauses) => disj(...clauses.map(c => conj(...c)));
-const conso = (first, rest, out) => equiv(new Cons(first, rest), out);
-const firsto = (first, out) => fresh(rest => conso(first, rest, out));
-const resto = (rest, out) => fresh(first => conso(first, rest, out));
-const singleo = (x, xs) => cons(x, null, xs);
-const emptyo = s => equiv(null, s);
-const nonemptyo = x => conso(_, _, x);
-const appendo = (xs, ys, zs) =>
+const conso = goal((first, rest, out) => equiv(new Cons(first, rest), out));
+const firsto = goal((first, out) => fresh(rest => conso(first, rest, out)));
+const resto = goal((rest, out) => fresh(first => conso(first, rest, out)));
+const singleo = goal((x, xs) => cons(x, null, xs));
+const emptyo = goal(s => equiv(null, s));
+const nonemptyo = goal(x => conso(_, _, x));
+const appendo = goal((xs, ys, zs) =>
   conde(
     [emptyo(xs), equiv(ys, zs)],
     [emptyo(ys), equiv(xs, zs)],
@@ -393,63 +425,63 @@ const appendo = (xs, ys, zs) =>
       conj(
         conso(f, xr, xs),
         conso(f, zr, zs),
-        appendo(xr, ys, zr)))]);
-const rotateo = (xs, ys) =>
+        appendo(xr, ys, zr)))]));
+const rotateo = goal((xs, ys) =>
   conde(
     [emptyo(xs), emptyo(ys)],
     [fresh((x, xr) =>
       conj(
         conso(x, xr, xs),
-        appendo(xr, list(x), ys)))]);
-const membero = (x, xs) =>
+        appendo(xr, list(x), ys)))]));
+const membero = goal((x, xs) =>
   conde(
     [firsto(x, xs)],
     [fresh(ys =>
       conj(
         resto(ys, xs),
-        membero(x, ys)))]);
-const reverseo = (xs, ys) =>
+        membero(x, ys)))]));
+const reverseo = goal((xs, ys) =>
   conde(
     [emptyo(xs), emptyo(ys)],
     [fresh((xf, xr, yl) =>
       conj(
         conso(xf, xr, xs),
         reverseo(xr, yl),
-        appendo(yl, list(xf), ys)))]);
+        appendo(yl, list(xf), ys)))]));
 // const predv = x => {
 //   const y = new LVar(Math.random(), 'y'); // TODO: not good, very bad for you
 //   return equiv(y, );
 // };
-const lengtho = (n, xs) =>
+const lengtho = goal((n, xs) =>
   conde(
     [zeroo(n), emptyo(xs)],
     [fresh((m, xr) =>
       conj(
         predo(n, m),
         resto(xr, xs),
-        lengtho(m, xr)))]);
-const rangeo = (x, xs) =>
+        lengtho(m, xr)))]));
+const rangeo = goal((x, xs) =>
   conde(
     [zeroo(x), emptyo(xs)],
     [fresh((xp, xr) =>
       conj(
         predo(x, xp),
         conso(x, xr, xs),
-        rangeo(xp, xr)))]);
-const ato = (xs, i, x) =>
+        rangeo(xp, xr)))]));
+const ato = goal((xs, i, x) =>
   conde(
     [zeroo(i), firsto(x, xs)],
     [fresh((xr, j) =>
       conj(
         resto(xr, xs),
         predo(i, j),
-        ato(xr, j, x)))]);
-const squareo = xss =>
+        ato(xr, j, x)))]));
+const squareo = goal(xss =>
   fresh((xs, n) =>
     conj(
       lengtho(n, xss),
-      everyg(xs => lengtho(n, xs), xss)));
-const firstso = (xss, ys) =>
+      everyg(xs => lengtho(n, xs), xss))));
+const firstso = goal((xss, ys) =>
   conde(
     [emptyo(xss), emptyo(ys)],
     [fresh((x, xs, xrs, yr) =>
@@ -457,8 +489,8 @@ const firstso = (xss, ys) =>
         conso(xs, xrs, xss),
         firsto(x, xs),
         conso(x, yr, ys),
-        firstso(xrs, yr)))]);
-const atso = (i, xss, ys) =>
+        firstso(xrs, yr)))]));
+const atso = goal((i, xss, ys) =>
   conde(
     [emptyo(xss), emptyo(ys)],
     [fresh((x, xs, xrs, yr) =>
@@ -466,21 +498,21 @@ const atso = (i, xss, ys) =>
         conso(xs, xrs, xss),
         ato(xs, i, x),
         conso(x, yr, ys),
-        atso(i, xrs, yr)))]);
-const ato2d = (xss, i, j, x) =>
+        atso(i, xrs, yr)))]));
+const ato2d = goal((xss, i, j, x) =>
   fresh(xs =>
     conj(
       ato(xss, i, xs),
-      ato(xs, j, x)));
-const crossCuto3o = (rows, cols) =>
+      ato(xs, j, x))));
+const crossCuto3o = goal((rows, cols) =>
   fresh((col0, col1, col2) =>
     conj(
       lengtho(three, rows),
       equiv(cols, list(col0, col1, col2)),
       atso(zero, rows, col0),
       atso(one, rows, col1),
-      atso(two, rows, col2)));
-const crossCuto9o = (rows, cols) =>
+      atso(two, rows, col2))));
+const crossCuto9o = goal((rows, cols) =>
   fresh((col0, col1, col2, col3, col4, col5, col6, col7, col8) =>
     conj(
       lengtho(nine, rows),
@@ -493,15 +525,15 @@ const crossCuto9o = (rows, cols) =>
       atso(five, rows, col5),
       atso(six, rows, col6),
       atso(seven, rows, col7),
-      atso(eight, rows, col8)));
-const transposeo = (rows, cols) =>
+      atso(eight, rows, col8))));
+const transposeo = goal((rows, cols) =>
   conde(
     [emptyo(rows), emptyo(cols)],
     [fresh(r =>
       conj(
         firsto(r, rows),
-        _transposeo_3(r, rows, cols)))]);
-const _transposeo_3 = (rows, middles, cols) =>
+        _transposeo_3(r, rows, cols)))]));
+const _transposeo_3 = goal((rows, middles, cols) =>
   conde(
     [emptyo(rows), emptyo(cols)],
     [fresh((rr, fc, rc, mo) =>
@@ -509,8 +541,8 @@ const _transposeo_3 = (rows, middles, cols) =>
         resto(rr, rows),
         conso(fc, rc, cols),
         _lists_firsts_rests(middles, fc, mo),
-        _transposeo_3(rr, mo, rc)))]);
-const _lists_firsts_rests = (xs, ys, zs) =>
+        _transposeo_3(rr, mo, rc)))]));
+const _lists_firsts_rests = goal((xs, ys, zs) =>
   conde(
     [emptyo(xs), emptyo(ys), emptyo(zs)],
     [fresh((fos, f, os, rest, fs, oss) =>
@@ -519,8 +551,8 @@ const _lists_firsts_rests = (xs, ys, zs) =>
         conso(f, os, fos),
         conso(f, fs, ys),
         conso(os, oss, zs),
-        _lists_firsts_rests(rest, fs, oss)))]);
-const blockso = (rows, blocks) =>
+        _lists_firsts_rests(rest, fs, oss)))]));
+const blockso = goal((rows, blocks) =>
   fresh((r0, r1, r2, r3, r4, r5, r6, r7, r8, b0, b1, b2, b01) =>
     conj(
       equiv(rows, list(r0, r1, r2, r3, r4, r5, r6, r7, r8)),
@@ -528,8 +560,8 @@ const blockso = (rows, blocks) =>
       blockso_help(r3, r4, r5, b1),
       blockso_help(r6, r7, r8, b2),
       appendo(b0, b1, b01),
-      appendo(b01, b2, blocks)));
-const blockso_help = (xs, ys, zs, bs) =>
+      appendo(b01, b2, blocks))));
+const blockso_help = goal((xs, ys, zs, bs) =>
   conde(
     [emptyo(xs), emptyo(ys), emptyo(zs), emptyo(bs)],
     [fresh((x0, x1, x2, xr,
@@ -541,17 +573,17 @@ const blockso_help = (xs, ys, zs, bs) =>
         appendo(list(y0, y1, y2), yr, ys),
         appendo(list(z0, z1, z2), zr, zs),
         conso(list(x0, x1, x2, y0, y1, y2, z0, z1, z2), br, bs),
-        blockso_help(xr, yr, zr, br)))]);
+        blockso_help(xr, yr, zr, br)))]));
 grid9 = list(...[0,0,0,0,0,0,0,0,0].map(y => list(...range(9).map(x => x + 1)))) // TODO: remove
 grid99 = list(...[range(9).map(x => x + 1), range(9).map(x => x + 10), range(9).map(x => x + 19), range(9).map(x => x + 28), range(9).map(x => x + 37), range(9).map(x => x + 46), range(9).map(x => x + 55), range(9).map(x => x + 64), range(9).map(x => x + 73)].map(xs => list(...xs)))
-const crossCuto = (rows, cols) =>
+const crossCuto = goal((rows, cols) =>
   fresh((n, is, js) =>
     conj(
       lengtho(n, rows),
       lengtho(n, cols),
       rangeo(n, is),
       rangeo(n, js),
-      everyg(i => everyg(j => fresh(x => conj(ato2d(rows, i, j, x), ato2d(cols, j, i, x))), js), is)));
+      everyg(i => everyg(j => fresh(x => conj(ato2d(rows, i, j, x), ato2d(cols, j, i, x))), js), is))));
 // const crossCuto = (rows, cols) => crossCuto_recur(zero, rows, cols);
 // const crossCuto_recur = (i, rows, cols) =>
 //   conde(
@@ -562,34 +594,34 @@ const crossCuto = (rows, cols) =>
 //         conso(col, restCols, cols),
 //         succo(i, j),
 //         crossCuto_recur(j, rows, restCols)))]);
-const oneThruNineo = xs => everyg(x => membero(x, xs), list(...range(9).map(x => 1)));
-const succeedg = state => new Node(state.map ? state : withMap(state, new Hash()), null);
-const failg = state => null;
-const assertg = (...assertions) => s => new Node(new State(new Hash(assertions)), s);
+const oneThruNineo = goal(xs => everyg(x => membero(x, xs), list(...range(9).map(x => 1))));
+const succeeds = state => new Node(state.map ? state : withMap(state, new Hash()), null);
+const fails = state => null;
+const assertg = (...assertions) => state => new Node(new State(new Hash(assertions)), state);
 const everyg = (g, xs) => state => {
   xs = walk(xs, state.map);
   return function everygStep(g, xs, i) {
-    return isCons(xs) ? conj(g(xs.head, i), everygStep(g, xs.tail, i.succ)) : succeedg;
+    return isCons(xs) ? conj(g(xs.head, i), everygStep(g, xs.tail, i.succ)) : succeeds;
   }(g, xs, zero)(state);
 };
 const someg = (g, xs) => state => {
   xs = walk(xs, state.map);
-  return function somegStep(g, xs) {
-    return isCons(xs) ? disj(g(xs.head), somegStep(g, xs.tail)) : failg;
-  }(g, xs)(state);
+  return function somegStep(g, xs, i) {
+    return isCons(xs) ? disj(g(xs.head, i), somegStep(g, xs.tail, i.succ)) : fails;
+  }(g, xs, zero)(state);
 };
-const overlapo = (xs, ys) =>
+const overlapo = goal((xs, ys) =>
   fresh((x, xr) =>
     conj(
       conso(x, xr, xs),
       disj(
         membero(x, ys),
-        overlapo(xr, ys))));
-const predo = (x, y) => equiv(x, new Succ(y));
-const succo = (x, y) => equiv(new Succ(x), y);
-const zeroo = x => equiv(x, zero);
-const oneo = x => equiv(x, one);
-const addo = (x, y, z) =>
+        overlapo(xr, ys)))));
+const predo = goal((x, y) => equiv(x, new Succ(y)));
+const succo = goal((x, y) => equiv(new Succ(x), y));
+const zeroo = goal(x => equiv(x, zero));
+const oneo = goal(x => equiv(x, one));
+const addo = goal((x, y, z) =>
   conde(
     [zeroo(x), equiv(y, z)],
     [zeroo(y), equiv(x, z)],
@@ -597,11 +629,11 @@ const addo = (x, y, z) =>
       conj(
         predo(x, xp),
         predo(z, zp),
-        addo(xp, y, zp)))]);
-const gteo = (x, y) => addo(y, _, x);
-const lteo = (x, y) => addo(x, _, y);
-const gto = (x, y) => fresh(diff => conj(addo(y, diff, x), gteo(diff, one)));
-const lto = (x, y) => fresh(diff => conj(addo(x, diff, y), gteo(diff, one)));
+        addo(xp, y, zp)))]));
+const gteo = (x, y) => goal(addo(y, _, x));
+const lteo = (x, y) => goal(addo(x, _, y));
+const gto = (x, y) => goal(fresh(diff => conj(addo(y, diff, x), gteo(diff, one))));
+const lto = (x, y) => goal(fresh(diff => conj(addo(x, diff, y), gteo(diff, one))));
 // TODO: only does forward multiplication, doesn't do division
 // const mulo = (x, y, z) =>
 //   conde(
@@ -641,28 +673,28 @@ blocks([A,B,C|Bs1],[D,E,F|Bs2],[G,H,I|Bs3], [Block|Blocks]) :-
     Block = [A,B,C,D,E,F,G,H,I],
     blocks(Bs1, Bs2, Bs3, Blocks).
  */
-const sudoku = rows =>
+const sudoku = goal(rows =>
   fresh((cols, boxes) =>
     conj(
       transposeo(rows, cols),
       blockso(rows, boxes),
       everyg(oneThruNineo, rows),
       everyg(oneThruNineo, cols),
-      everyg(oneThruNineo, boxes)));
-const oneThruThreeo = xs => everyg(x => membero(x, xs), list(1, 2, 3));
-const miniku = rows =>
+      everyg(oneThruNineo, boxes))));
+const oneThruThreeo = goal(xs => everyg(x => membero(x, xs), list(1, 2, 3)));
+const miniku = goal(rows =>
   fresh(cols =>
     conj(
       transposeo(rows, cols),
       everyg(oneThruThreeo, rows),
-      everyg(oneThruThreeo, cols)));
-const oneThruNg = n => xs => everyg(x => membero(x, xs), list(...range(n).map(x => x + 1)));
-const varkug = n => rows =>
+      everyg(oneThruThreeo, cols))));
+const oneThruNg = n => goal(xs => everyg(x => membero(x, xs), list(...range(n).map(x => x + 1))));
+const varkug = n => goal(rows =>
   fresh(cols =>
     conj(
       transposeo(rows, cols),
       everyg(oneThruNg(n), rows),
-      everyg(oneThruNg(n), cols)));
+      everyg(oneThruNg(n), cols))));
 /*
 play(rows => fresh((a, b, c, d, e, f, g, h, i) =>
   conj(
