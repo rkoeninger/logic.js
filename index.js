@@ -63,6 +63,12 @@ const Hash = class {
     return xkeys.length === ykeys.length &&
       xkeys.every(xk => ykeys.some(yk => eq(xk, yk) && eq(x.get(xk), y.get(yk))));
   }
+  static eqRespectIgnore(x, y) {
+    const xkeys = x.keys();
+    const ykeys = y.keys();
+    return xkeys.length === ykeys.length &&
+      xkeys.every(xk => ykeys.some(yk => eqRespectIgnore(xk, yk) && eqRespectIgnore(x.get(xk), y.get(yk))));
+  }
 };
 
 const State = class {
@@ -122,13 +128,6 @@ const Succ = class {
 const isZero = x => x instanceof Zero;
 const isSucc = x => x instanceof Succ;
 const isPeano = x => isZero(x) || isSucc(x);
-const Peano = class {
-  static eq(x, y) {
-    return isZero(x) && isZero(y) ||
-           isSucc(x) && isSucc(y) && Peano.eq(x.pred, y.pred);
-  }
-};
-
 const zero = new Zero();
 const one = zero.succ;
 const two = one.succ;
@@ -191,18 +190,30 @@ const show = x =>
   x === null ? 'null' :
   x === undefined ? 'undefined' :
   typeof x === 'symbol' ? `Symbol(${Symbol.keyFor(x)})` :
+  isIgnore(x) ? '_' :
   x.toString();
 const isObject = x => x && x.constructor === Object;
 const sameElements = (xs, ys) => xs.length === ys.length && xs.every(x => ys.some(y => eq(x, y)));
+const sameElementsRespectIgnore = (xs, ys) => xs.length === ys.length && xs.every(x => ys.some(y => eqRespectIgnore(x, y)));
 const eq = (x, y) =>
   !isIgnore(x) && !isIgnore(y) && (
     x === y ||
     isLVar(x) && isLVar(y) && x.id === y.id ||
-    isPeano(x) && isPeano(y) && Peano.eq(x, y) ||
+    isZero(x) && isZero(y) ||
+    isSucc(x) && isSucc(y) && eq(x.pred, y.pred) ||
     isCons(x) && isCons(y) && eq(x.head, y.head) && eq(x.tail, y.tail) ||
     isArray(x) && isArray(y) && x.length === y.length && x.every((xi, i) => eq(xi, y[i])) ||
-    isHash(x) && isHash(y) && Hash.eq(x, y)) ||
-    isObject(x) && isObject(y) && sameElements(Object.keys(x), Object.keys(y)) && Object.keys(x).every(k => eq(x[k], y[k]));
+    isHash(x) && isHash(y) && Hash.eq(x, y) ||
+    isObject(x) && isObject(y) && sameElements(Object.keys(x), Object.keys(y)) && Object.keys(x).every(k => eq(x[k], y[k])));
+const eqRespectIgnore = (x, y) =>
+    x === y ||
+    isLVar(x) && isLVar(y) && x.id === y.id ||
+    isZero(x) && isZero(y) ||
+    isSucc(x) && isSucc(y) && eqRespectIgnore(x.pred, y.pred) ||
+    isCons(x) && isCons(y) && eqRespectIgnore(x.head, y.head) && eqRespectIgnore(x.tail, y.tail) ||
+    isArray(x) && isArray(y) && x.length === y.length && x.every((xi, i) => eqRespectIgnore(xi, y[i])) ||
+    isHash(x) && isHash(y) && Hash.eqRespectIgnore(x, y) ||
+    isObject(x) && isObject(y) && sameElementsRespectIgnore(Object.keys(x), Object.keys(y)) && Object.keys(x).every(k => eqRespectIgnore(x[k], y[k]));
 const add = (map, key, value) => map ? map.set(key, value) : map;
 const walk = (x, map) => isLVar(x) && map && map.has(x) ? walk(map.get(x), map) : x;
 const unifyWalked = (x, y, map) =>
@@ -267,7 +278,7 @@ const deepWalkValue = (v, map) =>
   v;
 const deepWalk = (v, map) => deepWalkValue(walk(v, map), map);
 const reifyState = (v, map) =>
-  isLVar(v) ? add(map, v, new Reified(map.size)) :
+  isLVar(v) ? add(map, v, _) :
   isLazy(v) ? reify(v.f(), map) :
   isNode(v) ? reify(realize(v.next), reify(realize(v.head), map)) :
   isCons(v) ? reify(v.tail, reify(v.head, map)) :
@@ -292,7 +303,7 @@ const paramsOf = fn => acorn.Parser.parseExpressionAt(fn.toString(), 0).params.m
 const nub = xs => {
   const ys = [];
   for (const x of xs) {
-    if (!ys.some(y => eq(x, y))) {
+    if (!ys.some(y => eqRespectIgnore(x, y))) {
       ys.push(x);
     }
   }
@@ -306,7 +317,7 @@ const runResolve = f => {
   const maps = nub(runAll(fresh(f)).map(m => resolveVars(params.map((n, i) => new LVar(i, n)), m)));
   if (maps && maps.length > 0) {
     const kvss = maps
-      .map(m => m.entries.filter(([k, v]) => params.includes(k.name) && !isIgnore(v) && !isReified(v)))
+      .map(m => m.entries.filter(([k, v]) => params.includes(k.name)))
       .filter(kvs => kvs.length > 0);
     if (kvss.length > 0) {
       return {
@@ -405,6 +416,10 @@ const reverseo = (xs, ys) =>
         conso(xf, xr, xs),
         reverseo(xr, yl),
         appendo(yl, list(xf), ys)))]);
+// const predv = x => {
+//   const y = new LVar(Math.random(), 'y'); // TODO: not good, very bad for you
+//   return equiv(y, );
+// };
 const lengtho = (n, xs) =>
   conde(
     [zeroo(n), emptyo(xs)],

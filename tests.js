@@ -2,7 +2,7 @@ let testsPassed = 0;
 let testsFailed = 0;
 const test = (name, f, exptected) => {
   const actual = runResolve(f);
-  if (exptected.success === actual.success && sameElements(exptected.results, actual.results)) {
+  if (exptected.success === actual.success && sameElementsRespectIgnore(exptected.results, actual.results)) {
     testsPassed++;
   } else {
     console.error(name);
@@ -90,7 +90,7 @@ test('firsto tautology ignore all',
   () => firsto(_, _),
   tautology);
 test('firsto tautology first and first of whole',
-  x => firsto(x, list(x, 2, 3)),
+  () => fresh(x => firsto(x, list(x, 2, 3))),
   tautology);
 test('firsto infer first',
   x => firsto(x, list(1, 2, 3)),
@@ -114,7 +114,7 @@ test('resto tautology ignore all',
   () => resto(_, _),
   tautology);
 test('resto tautology rest and rest of whole',
-  x => resto(x, new Cons(1, x)),
+  () => fresh(x => resto(x, new Cons(1, x))),
   tautology);
 test('resto infer rest',
   x => resto(x, list(1, 2, 3)),
@@ -206,9 +206,9 @@ test('membero iterate values',
 test('membero single value against all variable list',
   (x, y, z) => membero(1, list(x, y, z)),
   successful([
-    { x: 1 },
-    { y: 1 },
-    { z: 1 }]));
+    { x: 1, y: _, z: _ },
+    { x: _, y: 1, z: _ },
+    { x: _, y: _, z: 1 }]));
 test('membero infer single value in list',
   x => membero(2, list(1, x, 3)),
   successful({ x: 2 }));
@@ -216,7 +216,7 @@ test('predo tautology',
   () => predo(five, four),
   tautology);
 test('predo-succo tautology',
-  (x, y) => conj(predo(x, y), succo(y, x)),
+  () => fresh((x, y) => conj(predo(x, y), succo(y, x))),
   tautology);
 test('succo tautology',
   () => succo(four, five),
