@@ -91,15 +91,6 @@ const Lazy = class {
   }
 };
 
-const Reified = class {
-  constructor(n) {
-    this.n = n;
-  }
-  toString() {
-    return '%' + this.n;
-  }
-};
-
 const Zero = class {
   get succ() {
     return new Succ(this);
@@ -141,10 +132,6 @@ const nine = eight.succ;
 const peano = n => n === 0 ? zero : new Succ(peano(n - 1));
 const _ = new LVar(-1, '_');
 const isIgnore = x => isLVar(x) && x.id === -1 && x.name === '_';
-const isReified = x =>
-  x instanceof Reified ||
-  isCons(x) && (isReified(x.head) || isReified(x.tail)) ||
-  isSucc(x) && isReified(x.pred);
 const raise = x => { throw new Error(x); };
 const withMap = (state, map) => new State(map, state.nextId);
 const incNextId = (state, n = 1) => new State(state.map, state.nextId + n);
