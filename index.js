@@ -116,6 +116,8 @@ const Succ = class {
     return '' + this.numeral;
   }
 };
+let nextId = 0;
+const lvar = name => new LVar(nextId++, name);
 const isZero = x => x instanceof Zero;
 const isSucc = x => x instanceof Succ;
 const isPeano = x => isZero(x) || isSucc(x);
@@ -281,7 +283,7 @@ const delayGoal = g => state => () => g(state);
 const fresh = f => state => {
   const args = paramsOf(f);
   const arity = args.length;
-  const vars = range(arity).map(n => new LVar(state.nextId + n, args[n]));
+  const vars = range(arity).map(n => lvar(args[n]));
   return f(...vars)(incNextId(state, arity));
 };
 const goal = g => Object.assign(g, { isGoal: true });
@@ -333,7 +335,8 @@ const tautology = { success: true, results: [] };
 const contradiction = { success: false, results: [] };
 const runResolve = f => {
   const params = paramsOf(f);
-  const maps = nub(runAll(fresh(f)).map(m => resolveVars(params.map((n, i) => new LVar(i, n)), m)));
+  const initId = nextId;
+  const maps = nub(runAll(fresh(f)).map(m => resolveVars(params.map((n, i) => new LVar(i + initId, n)), m)));
   if (maps && maps.length > 0) {
     const kvss = maps
       .map(m => m.entries.filter(([k, v]) => params.includes(k.name)))
