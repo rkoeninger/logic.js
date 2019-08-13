@@ -71,13 +71,6 @@ const Hash = class {
   }
 };
 
-const State = class {
-  constructor(map = new Hash(), nextId = 0) {
-    this.map = map;
-    this.nextId = nextId;
-  }
-};
-
 const Node = class {
   constructor(head, next = null) {
     this.head = head;
@@ -102,6 +95,7 @@ const Zero = class {
     return '0';
   }
 };
+
 const Succ = class {
   constructor(pred) {
     this.pred = pred;
@@ -116,6 +110,7 @@ const Succ = class {
     return '' + this.numeral;
   }
 };
+
 let nextId = 0;
 const lvar = name => new LVar(nextId++, name);
 const isZero = x => x instanceof Zero;
@@ -135,8 +130,6 @@ const peano = n => n === 0 ? zero : new Succ(peano(n - 1));
 const _ = new LVar(-1, '_');
 const isIgnore = x => isLVar(x) && x.id === -1 && x.name === '_';
 const raise = x => { throw new Error(x); };
-const withMap = (state, map) => new State(map, state.nextId);
-const incNextId = (state, n = 1) => new State(state.map, state.nextId + n);
 const isArray = x => Array.isArray(x);
 const isNumber = x => typeof x === 'number';
 const isHash = x => x instanceof Hash;
@@ -145,7 +138,6 @@ const isNode = x => x instanceof Node;
 const isLVar = x => x instanceof LVar;
 const isCons = x => x instanceof Cons;
 const isList = x => x === null || isCons(x);
-const isState = x => x instanceof State;
 const isFunction = x => typeof x === 'function';
 const trampoline = f => {
   while (isFunction(f)) {
@@ -220,7 +212,7 @@ const mergeStreams = (x, y) =>
   x === null ? y :
   isNode(x) ? new Node(x.head, mergeStreams(x.next, y)) :
   isFunction(x) ? (() => mergeStreams(y, x())) :
-  isState(x) ? new Node(x, isState(y) ? new Node(y) : y) :
+  isHash(x) ? new Node(x, isHash(y) ? new Node(y) : y) :
   raise('unrecognized element in stream: ' + show(x));
 const flatMapStream = (s, g) =>
   isLazy(s) ? flatMapStream(s.f(), g) :
@@ -254,37 +246,35 @@ const seqToArray = (n, s) => {
   return result;
 };
 const equiv = (u, v) => state => {
-  const newMap = unify(u, v, state.map);
+  const unified = unify(u, v, state);
   // TODO: check if the map is unchanged?
-  return newMap ? new Node(withMap(state, newMap)) : null;
+  return unified ? new Node(unified) : null;
 };
-const deepWalkValue = (v, map) =>
-  isLazy(v) ? deepWalk(v.f(), map) :
-  isNode(v) ? new Node(deepWalk(v.head, map), deepWalk(v.next, map)) :
-  isCons(v) ? new Cons(deepWalk(v.head, map), deepWalk(v.tail, map)) :
-  isSucc(v) ? new Succ(deepWalk(v.pred, map)) :
-  isFunction(v) ? deepWalk(trampoline(v), map) :
+const deepWalkValue = (v, state) =>
+  isLazy(v) ? deepWalk(v.f(), state) :
+  isNode(v) ? new Node(deepWalk(v.head, state), deepWalk(v.next, state)) :
+  isCons(v) ? new Cons(deepWalk(v.head, state), deepWalk(v.tail, state)) :
+  isSucc(v) ? new Succ(deepWalk(v.pred, state)) :
+  isFunction(v) ? deepWalk(trampoline(v), state) :
   v;
-const deepWalk = (v, map) => deepWalkValue(walk(v, map), map);
-const reifyState = (v, map) =>
-  isLVar(v) ? add(map, v, _) :
-  isLazy(v) ? reify(v.f(), map) :
-  isNode(v) ? reify(realize(v.next), reify(realize(v.head), map)) :
-  isCons(v) ? reify(v.tail, reify(v.head, map)) :
-  isSucc(v) ? reify(v.pred, map) :
-  isFunction(v) ? reify(trampoline(v), map) :
-  map;
-const reify = (v, map) => reifyState(walk(v, map), map);
-const resolveVars = (vars, map) => new Hash(vars.map(v => {
-  const v2 = deepWalk(v, map);
+const deepWalk = (v, state) => deepWalkValue(walk(v, state), state);
+const reifyState = (v, state) =>
+  isLVar(v) ? add(state, v, _) :
+  isLazy(v) ? reify(v.f(), state) :
+  isNode(v) ? reify(realize(v.next), reify(realize(v.head), state)) :
+  isCons(v) ? reify(v.tail, reify(v.head, state)) :
+  isSucc(v) ? reify(v.pred, state) :
+  isFunction(v) ? reify(trampoline(v), state) :
+  state;
+const reify = (v, state) => reifyState(walk(v, state), state);
+const resolveVars = (vars, state) => new Hash(vars.map(v => {
+  const v2 = deepWalk(v, state);
   return [v, deepWalk(v2, reify(v2, new Hash()))];
 }));
 const delayGoal = g => state => () => g(state);
 const fresh = f => state => {
   const args = paramsOf(f);
-  const arity = args.length;
-  const vars = range(arity).map(n => lvar(args[n]));
-  return f(...vars)(incNextId(state, arity));
+  return f(...range(args.length).map(n => lvar(args[n])))(state);
 };
 const goal = g => Object.assign(g, { isGoal: true });
 const isGoal = x => x && x.isGoal;
@@ -318,7 +308,7 @@ const isGoal = x => x && x.isGoal;
 // Partial = Goal (specialized)
 // predv :: LVal -> LVal -> Generator
 
-const run = (n, g) => seqToArray(n, streamToSeq(g(new State()))).map(x => x.map);
+const run = (n, g) => seqToArray(n, streamToSeq(g(new Hash())));
 const runAll = g => run(32, g);
 const paramsOf = fn => acorn.Parser.parseExpressionAt(fn.toString(), 0).params.map(p => p.name);
 const nub = xs => {
@@ -585,17 +575,17 @@ const crossCuto = goal((rows, cols) =>
 //         succo(i, j),
 //         crossCuto_recur(j, rows, restCols)))]);
 const oneThruNineo = goal(xs => everyg(x => membero(x, xs), list(...range(9).map(x => 1))));
-const succeeds = state => new Node(state.map ? state : withMap(state, new Hash()), null);
+const succeeds = state => new Node(state);
 const fails = state => null;
-const assertg = (...assertions) => state => new Node(new State(new Hash(assertions)), state);
+const assertg = (...assertions) => state => new Node(new Hash(assertions), state);
 const everyg = (g, xs) => state => {
-  xs = walk(xs, state.map);
+  xs = walk(xs, state);
   return function everygStep(g, xs, i) {
     return isCons(xs) ? conj(g(xs.head, i), everygStep(g, xs.tail, i.succ)) : succeeds;
   }(g, xs, zero)(state);
 };
 const someg = (g, xs) => state => {
-  xs = walk(xs, state.map);
+  xs = walk(xs, state);
   return function somegStep(g, xs, i) {
     return isCons(xs) ? disj(g(xs.head, i), somegStep(g, xs.tail, i.succ)) : fails;
   }(g, xs, zero)(state);
