@@ -271,7 +271,7 @@ const resolveVars = (vars, state) => new Hash(vars.map(v => {
   const v2 = deepWalk(v, state);
   return [v, deepWalk(v2, reify(v2, new Hash()))];
 }));
-const delayGoal = g => state => () => g(state);
+const delay = g => state => () => g(state);
 const fresh = f => state => {
   const args = paramsOf(f);
   return f(...range(args.length).map(n => lvar(args[n])))(state);
@@ -310,7 +310,22 @@ const isGoal = x => x && x.isGoal;
 
 const run = (n, g) => seqToArray(n, streamToSeq(g(new Hash())));
 const runAll = g => run(32, g);
-const paramsOf = fn => acorn.Parser.parseExpressionAt(fn.toString(), 0).params.map(p => p.name);
+const parseFunction = fn => acorn.Parser.parseExpressionAt(fn.toString(), 0);
+const paramsOf = fn => parseFunction(fn).params.map(p => p.name);
+const overloaded = (...fs) => {
+  const aritites = fs.map(fn => {
+    const params = parseFunction(fn).params;
+    return {
+      arity: params.filter(p => p.type !== 'RestElement').length,
+      rest: params.some(p => p.type === 'RestElement'),
+      fn
+    };
+  });
+  return (...args) => {
+    const { fn } = aritites.find(({ arity, rest }) => rest ? args.length >= arity : args.length === arity);
+    return fn ? fn(...args) : raise(`no match for arity: ${args.length}`);
+  };
+};
 const nub = xs => {
   const ys = [];
   for (const x of xs) {
@@ -354,42 +369,26 @@ const play = f => {
   return actual.success;
 };
 
-const disj = (...goals) => {
-  switch (goals.length) {
-    case 0: return fails;
-    case 1: return goals[0];
-    case 2:
-      const g0 = goals[0];
-      const g1 = goals[1];
-      return state =>
-        mergeStreams(
-          isFunction(g0) ? g0(state) : new Node(state),
-          isFunction(g1) ? g1(state) : new Node(state));
-  }
-  let result = delayGoal(goals[0]);
-  for (let i = 1; i < goals.length; ++i) {
-    result = disj(result, delayGoal(goals[i]));
-  }
-  return result;
-};
-const conj = (...goals) => {
-  switch (goals.length) {
-    case 0: return succeeds;
-    case 1: return goals[0];
-    case 2:
-      const g0 = goals[0];
-      const g1 = goals[1];
-      return state =>
-        isFunction(g0) ? flatMapStream(g0(state), g1) :
-        isFunction(g1) ? flatMapStream(g1(state), g0) :
-        new Node(state);
-  }
-  let result = delayGoal(goals[0]);
-  for (let i = 1; i < goals.length; ++i) {
-    result = conj(result, delayGoal(goals[i]));
-  }
-  return result;
-};
+const disj = overloaded(
+  () => fails,
+  g => g,
+  (g0, g1) => state =>
+    mergeStreams(
+      isFunction(g0) ? g0(state) : new Node(state),
+      isFunction(g1) ? g1(state) : new Node(state)),
+  (g0, ...gs) =>
+    gs.reduce((result, g) =>
+      disj(result, delay(g)), delay(g0)));
+const conj = overloaded(
+  () => succeeds,
+  g => g,
+  (g0, g1) => state =>
+    isFunction(g0) ? flatMapStream(g0(state), g1) :
+    isFunction(g1) ? flatMapStream(g1(state), g0) :
+    new Node(state),
+  (g0, ...gs) =>
+    gs.reduce((result, g) =>
+      conj(result, delay(g)), delay(g0)));
 const conde = (...clauses) => disj(...clauses.map(c => conj(...c)));
 const conso = goal((first, rest, out) => equiv(new Cons(first, rest), out));
 const firsto = goal((first, out) => fresh(rest => conso(first, rest, out)));
