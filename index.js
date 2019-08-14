@@ -610,6 +610,20 @@ const addo = goal((x, y, z) =>
         predo(x, xp),
         predo(z, zp),
         addo(xp, y, zp)))]));
+const eveno = x =>
+  disj(
+    zeroo(x),
+    fresh(xp =>
+      conj(
+        predo(x, xp),
+        oddo(xp))));
+const oddo = x =>
+  disj(
+    oneo(x),
+    fresh(xp =>
+      conj(
+        predo(x, xp),
+        eveno(xp))));
 const gteo = (x, y) => goal(addo(y, _, x));
 const lteo = (x, y) => goal(addo(x, _, y));
 const gto = (x, y) => goal(fresh(diff => conj(addo(y, diff, x), gteo(diff, one))));

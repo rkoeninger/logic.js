@@ -279,6 +279,26 @@ test('addo all addends',
     { x: one,   y: two },
     { x: two,   y: one },
     { x: three, y: zero }]));
+for (const n of [zero, two, four, six]) {
+  test('eveno even',
+    () => eveno(n),
+    tautology);
+}
+for (const n of [one, three, five, seven]) {
+  test('eveno odd',
+    () => eveno(n),
+    contradiction);
+}
+for (const n of [one, three, five, seven]) {
+  test('oddo odd',
+    () => oddo(n),
+    tautology);
+}
+for (const n of [zero, two, four, six]) {
+  test('oddo even',
+    () => oddo(n),
+    contradiction);
+}
 test('gteo tautology',
   () => gteo(five, two),
   tautology);
