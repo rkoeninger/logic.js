@@ -76,7 +76,7 @@ const Node = class {
     this.head = head;
     this.next = next;
   }
-}
+};
 
 const Lazy = class {
   constructor(f = (() => null)) {
@@ -375,7 +375,7 @@ const disj = (...goals) => {
 const conj = (...goals) => {
   switch (goals.length) {
     case 0: return succeeds;
-    case 1: goals[0];
+    case 1: return goals[0];
     case 2:
       const g0 = goals[0];
       const g1 = goals[1];
