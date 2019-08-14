@@ -14,6 +14,42 @@ const test = (name, f, exptected) => {
   }
 };
 const startTime = new Date().getTime();
+test('conj',
+  () => conj(),
+  tautology);
+test('conj succeeds',
+  () => conj(succeeds),
+  tautology);
+test('conj succeeds succeeds',
+  () => conj(succeeds, succeeds),
+  tautology);
+test('conj fails succeeds',
+  () => conj(fails, succeeds),
+  contradiction);
+test('conj succeeds fails',
+  () => conj(succeeds, fails),
+  contradiction);
+test('conj fails fails',
+  () => conj(fails, fails),
+  contradiction);
+test('disj',
+  () => disj(),
+  contradiction);
+test('disj succeeds',
+  () => disj(succeeds),
+  tautology);
+test('disj succeeds succeeds',
+  () => disj(succeeds, succeeds),
+  tautology);
+test('disj fails succeeds',
+  () => disj(fails, succeeds),
+  tautology);
+test('disj succeeds fails',
+  () => disj(succeeds, fails),
+  tautology);
+test('disj fails fails',
+  () => disj(fails, fails),
+  contradiction);
 test('conso tautology',
   () => conso(1, list(2, 3), list(1, 2, 3)),
   tautology);
