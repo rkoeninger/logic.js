@@ -577,6 +577,7 @@ const oneThruNineo = goal(xs => everyg(x => membero(x, xs), list(...range(9).map
 const succeeds = state => new Node(state);
 const fails = state => null;
 const assertg = (...assertions) => state => new Node(new Hash(assertions), state);
+const notg = g => state => realize(g(state)) === null ? succeeds : fails;
 const everyg = (g, xs) => state => {
   xs = walk(xs, state);
   return function everygStep(g, xs, i) {
