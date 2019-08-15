@@ -627,18 +627,29 @@ const gteo = (x, y) => goal(addo(y, _, x));
 const lteo = (x, y) => goal(addo(x, _, y));
 const gto = (x, y) => goal(fresh(diff => conj(addo(y, diff, x), gteo(diff, one))));
 const lto = (x, y) => goal(fresh(diff => conj(addo(x, diff, y), gteo(diff, one))));
-// TODO: only does forward multiplication, doesn't do division
-// const mulo = (x, y, z) =>
-//   conde(
-//     [zeroo(x), zeroo(z)],
-//     [zeroo(y), zeroo(z)],
-//     [oneo(x), equiv(y, z)],
-//     [oneo(y), equiv(x, z)],
-//     [fresh((xp, w) =>
-//       conj(
-//         predo(x, xp),
-//         mulo(xp, y, w),
-//         addo(y, w, z)))]);
+const mulo = (x, y, z) =>
+  conde(
+    [zeroo(x), zeroo(z)],
+    [zeroo(y), zeroo(z)],
+    [oneo(x), equiv(y, z)],
+    [oneo(y), equiv(x, z)],
+    [fresh((xp, w) =>
+      conj(
+        predo(x, xp),
+        addo(y, w, z),
+        mulo(xp, y, w)))]);
+const expo = (x, y, z) =>
+  conde(
+    [zeroo(x), zeroo(z)],
+    [zeroo(y), oneo(z)],
+    [oneo(x), oneo(z)],
+    [oneo(y), equiv(x, z)],
+    [fresh((yp, w) =>
+      conj(
+        predo(y, yp),
+        mulo(x, w, z),
+        expo(x, yp, w)))]);
+const sqrto = (x, y) => mulo(y, y, x);
 
 // TODO: predicates like is_numbero/1, is_listo/1, etc...
 // TODO: negation like noto/1
